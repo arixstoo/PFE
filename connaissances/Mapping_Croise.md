@@ -1,6 +1,8 @@
 # Le moteur de mapping croisé PCI DSS ↔ GIE Monétique
 
 > Fonction **centrale** du CDC (§ 7–8). Ce fichier explique le concept, propose un **modèle de données**, un **algorithme** fidèle aux 5 règles du CDC, des cas limites, et une méthode pour **construire** le mapping avec MNA.
+>
+> ✅ **Réunion du 05/11/2026 (D8) :** le **GIE Monétique est basé sur PCI DSS 3.2**, et on ne gère **pas** les anciennes versions PCI dans la plateforme. Le mapping à construire est donc **GIE ↔ PCI DSS v4.0.1**, en passant par la correspondance officielle 3.2.1 → 4.0 [S2] (voir § 6).
 
 ---
 
@@ -182,6 +184,7 @@ Partout (écran, rapport section 11) : bandeau **« Couverture estimée par mapp
 ## 6. Construire le mapping (travail d'expert, Phase 1bis)
 
 ### Méthode recommandée
+0. **Exploiter l'origine PCI DSS 3.2 du GIE** : pour chaque exigence GIE, retrouver l'exigence PCI 3.2.x d'origine (si elle existe), puis son équivalent v4.0.1 grâce au *Summary of Changes 3.2.1 → 4.0* [S2]. Attention : la v4.0 a **renuméroté** et **réorganisé** les exigences, et ajouté ~60 nouvelles exigences (dont 51 « future-dated ») ; une correspondance 3.2 → 4.0.1 est souvent **partielle** (la v4.0.1 est plus exigeante) → type PARTIAL ou FULL selon le sens. Les exigences GIE propres au contexte algérien (GAB, TPE, switch CIB) restent sans équivalent (« Non mappé » / NONE).
 1. **Normaliser** les deux référentiels en tableur : ID, domaine, texte, objectif.
 2. **Pré-classer par domaine** (accès ↔ accès, journalisation ↔ journalisation) pour limiter les comparaisons.
 3. **Générer des candidats** :
@@ -230,6 +233,7 @@ Partout (écran, rapport section 11) : bandeau **« Couverture estimée par mapp
 ---
 
 ## 7. Références utiles
-- **NIST OLIR** (Online Informative References) : méthodologie NIST de mapping entre référentiels avec types de relations (*subset of, intersects with, equal, superset of, not related to*) → bonne référence académique pour justifier vos 4 types. Correspondance : *equal / superset of* ≈ Complet ; *intersects with / subset of* ≈ Partiel ; *not related* ≈ Aucun.
+- **PCI SSC — Summary of Changes 3.2.1 → 4.0** [S2] : indispensable vu l'origine du GIE.
+- **NIST OLIR** (Online Informative References) [S5], [S6] : méthodologie NIST de mapping entre référentiels avec types de relations (*subset of, intersects with, equal, superset of, not related to*) → bonne référence académique pour justifier vos 4 types. Correspondance : *equal / superset of* ≈ Complet ; *intersects with / subset of* ≈ Partiel ; *not related* ≈ Aucun.
 - **Secure Controls Framework (SCF)** et **CISO Assistant** : mappings entre de nombreux référentiels, utiles comme exemples (PCI ↔ ISO 27001 notamment, ce qui aide puisque le GIE s'inspire d'ISO 27000).
 - PCI SSC publie aussi des correspondances (ex. avec NIST CSF) — utiles comme exemple de format.

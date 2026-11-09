@@ -83,7 +83,11 @@
 
 | Terme | Définition |
 |---|---|
-| **Multi-tenant** | Une seule instance logicielle sert plusieurs clients (tenants) avec isolation des données. |
+| **Multi-tenant** | Une seule instance logicielle sert plusieurs clients (tenants) avec isolation des données. Ici, **deux niveaux** : organisation (tenant SaaS) → client / entité auditée. |
+| **SaaS** | Software as a Service : logiciel fourni en service (souvent hébergé par l'éditeur), vendu par abonnement / **licence**. Mode B de la plateforme (réunion du 05/11/2026). |
+| **Organisation (tenant)** | Dans la plateforme : MNA (mode service) ou une entreprise **licenciée** (mode SaaS), totalement isolée des autres. |
+| **Licence / module** | Droit d'usage d'une organisation : durée, nombre d'utilisateurs, **modules** référentiels activés (PCI DSS, GIE…). |
+| **Pool / Bridge / Silo** | Modèles d'isolation SaaS : base partagée filtrée (pool), schéma par tenant (bridge), instance dédiée (silo). |
 | **RBAC** | Role-Based Access Control : droits attribués selon le rôle. |
 | **ABAC** | Attribute-Based Access Control : droits selon des attributs (client, campagne…). Le CDC décrit un RBAC contextuel proche de l'ABAC. |
 | **IDOR** | Insecure Direct Object Reference : accès à un objet d'un autre utilisateur en changeant un ID — **la** faille à tester en multi-tenant. |
