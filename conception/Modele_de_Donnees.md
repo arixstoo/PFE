@@ -1,6 +1,8 @@
 # Modèle de données (proposition)
 
-> Points délicats : **versioning immuable** des référentiels, **multi-tenant**, distinction **statut proposé / validé**, **historique**. Ce modèle couvre les 4 lots ; on implémente les tables au fil des sprints mais on les **conçoit toutes dès la Phase 2**.
+> Points délicats : **versioning immuable** des référentiels, **multi-tenant à deux niveaux**, distinction **statut proposé / validé**, **historique**. Ce modèle couvre les 4 lots ; on implémente les tables au fil des sprints mais on les **conçoit toutes dès la Phase 3 (conception)**.
+>
+> **Mise à jour 09/11/2026 (réunion du 05/11, D11) :** ajout du niveau **Organisation** (tenant) au-dessus du **Client** pour le **mode SaaS sous licence**, et des entités **License** / **LicensedModule**. En mode A (service), il n'y a qu'une organisation : MNA. Pas d'import d'anciennes versions PCI (D8) : seules PCI DSS v4.0.1 et le GIE (basé sur PCI DSS 3.2) sont chargés.
 
 ---
 
@@ -10,9 +12,23 @@
 classDiagram
     direction LR
 
+    class Organization {
+      id, name, type "service_provider|licensee"
+      status, deployment "shared|dedicated"
+    }
+    class License {
+      id, organization_id, plan
+      start_date, end_date, max_users
+      status "active|suspended|expired"
+    }
+    class LicensedModule { license_id, framework_id }
+    Organization "1" --> "*" License
+    License "1" --> "*" LicensedModule
+
     class Framework {
-      id, code "PCI-DSS | GIE"
+      id, code "PCI-DSS | GIE | ..."
       name, publisher, description
+      owner_organization_id (null = bibliothèque globale)
     }
     class FrameworkVersion {
       id, framework_id, version "4.0.1"
@@ -40,9 +56,10 @@ classDiagram
     Control "0..1" --> "*" Control : parent
 
     class Client {
-      id, name, legal_info, sector
+      id, organization_id, name, legal_info, sector
       status
     }
+    Organization "1" --> "*" Client
     class Contact { id, client_id, name, role, email }
     class Asset { id, client_id, type, name, criticality, in_cde }
     Client "1" --> "*" Contact
@@ -168,14 +185,17 @@ classDiagram
 - `Campaign.framework_version_id` est fixé à la création et **non modifiable** après « En cours ».
 - Même logique pour `MappingSet`.
 - Comparer deux campagnes sur deux versions différentes → table optionnelle `ControlEquivalence(old_control_id, new_control_id, type)` (ex. PCI v4.0.1 → future v5).
+- Le GIE étant basé sur PCI DSS 3.2, le **MappingSet GIE ↔ PCI v4.0.1** peut stocker dans `rationale` la référence 3.2 d'origine et le lien vers le *Summary of Changes* [S2] — utile pour justifier chaque correspondance.
 
-### 2.2 Multi-tenant (isolation)
-- Toutes les tables « client » portent `client_id` (directement ou via `campaign_id`).
+### 2.2 Multi-tenant (isolation à deux niveaux)
+- **Niveau 1 — Organisation** (mode SaaS) : toutes les tables métier portent `organization_id` (directement ou par jointure) ; une organisation n'a jamais connaissance d'une autre. Les référentiels de la **bibliothèque globale** (`owner_organization_id = null`) sont lisibles par les organisations qui ont le **module sous licence**.
+- **Niveau 2 — Client** : toutes les tables « client » portent `client_id` (directement ou via `campaign_id`).
+- Modèle « pool » par défaut (base partagée) ; le même schéma fonctionne en « silo » (une instance par organisation) — voir [Choix_Technologiques.md](Choix_Technologiques.md) § 5 et [D2].
 - **Défense en profondeur** :
   1. Manager Django par défaut qui filtre sur les clients autorisés de l'utilisateur courant ;
   2. Vérification de permission objet dans chaque vue (DRF `has_object_permission`) ;
-  3. **PostgreSQL Row-Level Security** avec `SET app.current_client_ids` par requête (bonus mais excellent argument sécurité) ;
-  4. Tests automatiques d'IDOR : pour chaque endpoint, un utilisateur du client A tente d'accéder à un objet du client B → 404.
+  3. **PostgreSQL Row-Level Security** [D1] avec `SET app.current_organization_id` et `app.current_client_ids` par requête (fortement recommandé en mode SaaS) ;
+  4. Tests automatiques d'IDOR : pour chaque endpoint, un utilisateur du client A (ou de l'organisation 1) tente d'accéder à un objet du client B (ou de l'organisation 2) → 404.
 - Les identifiants exposés sont des **UUID** (non devinables), pas des entiers séquentiels.
 
 ### 2.3 Statut proposé vs validé
@@ -201,7 +221,9 @@ classDiagram
 | Type mapping | FULL, PARTIAL, MULTIPLE, NONE |
 | Indicateur couverture | COVERED, PARTIAL, NOT_COVERED, NOT_MAPPED, TO_VERIFY |
 | Criticité | CRITICAL, HIGH, MEDIUM, LOW |
-| Rôle | SUPER_ADMIN, MISSION_MANAGER, AUDITOR, CLIENT_CONTRIBUTOR, READER |
+| Rôle | PLATFORM_OPERATOR, ORG_ADMIN, MISSION_MANAGER, AUDITOR, CLIENT_CONTRIBUTOR, READER |
+| Type d'organisation | SERVICE_PROVIDER (ex. MNA, mode A), LICENSEE (mode B) |
+| Statut de licence | ACTIVE, SUSPENDED, EXPIRED |
 
 ## 4. Format d'import d'un référentiel (extrait)
 

@@ -15,7 +15,18 @@
 | US-104 | En tant que super admin, je veux consulter le journal d'audit filtrable afin d'assurer la traçabilité | M | 5 | Tous les événements CDC § 14.1 ; filtres date/utilisateur/client/action ; export CSV |
 | US-105 | En tant que RSSI de MNA, je veux que le journal soit infalsifiable afin de garantir la non-répudiation | C | 5 | Chaînage de hash + commande de vérification |
 
-## EPIC 2 — Clients (Lot 1, Sprint 1)
+## EPIC 1bis — Organisations & licences — mode SaaS (Lot 1, Sprint 1) — *ajouté le 09/11/2026 (réunion 05/11, D11)*
+| ID | User story | Prio | Pts | Critères d'acceptation |
+|---|---|---|---|---|
+| US-151 | En tant qu'opérateur de la plateforme, je veux créer une organisation (prestataire d'audit ou entreprise licenciée) afin de servir plusieurs organisations sur la même plateforme | M | 5 | Organisation isolée ; premier admin d'organisation créé |
+| US-152 | En tant qu'opérateur, je veux attribuer une licence (dates, nombre d'utilisateurs, modules PCI/GIE) à une organisation | M | 5 | Module non licencié = référentiel invisible ; licence expirée = lecture seule |
+| US-153 | En tant qu'admin d'organisation, je veux gérer les utilisateurs et rôles de mon organisation | M | 3 | Aucun accès aux autres organisations |
+| US-154 | En tant qu'utilisateur, je ne dois jamais voir ni deviner l'existence d'une autre organisation | M | 5 | Tests IDOR inter-organisations verts ; RLS active |
+| US-155 | En tant qu'opérateur, je veux gérer les modules sans accéder au contenu des audits des organisations | S | 3 | Séparation des tâches vérifiée par test |
+| US-156 | En tant qu'admin d'organisation, je veux brancher l'annuaire de mon entreprise (SSO OIDC) | C | 8 | Keycloak |
+| US-157 | En tant qu'opérateur, je veux des quotas par organisation (stockage, analyses IA) | C | 3 | Limitation sans impact sur les autres |
+
+## EPIC 2 — Clients / entités auditées (Lot 1, Sprint 1)
 | ID | User story | Prio | Pts | Critères |
 |---|---|---|---|---|
 | US-201 | En tant que resp. de mission, je veux créer une fiche client (infos, contacts, périmètres, actifs) | M | 5 | Champs CDC § 5.1 |
@@ -37,7 +48,7 @@
 |---|---|---|---|---|
 | US-401 | En tant que resp. de mission, je veux créer une campagne (client, nom, référentiel, version, dates, équipe, périmètre, actifs) | M | 5 | Version figée après lancement |
 | US-402 | En tant que resp. de mission, je veux faire évoluer le statut de la campagne selon le cycle de vie | M | 5 | 8 statuts ; transitions autorisées seulement ; journalisé |
-| US-403 | En tant que resp. de mission, je veux définir les contrôles applicables (règles + ajustement manuel) | M | 5 | — |
+| US-403 | En tant que resp. de mission, je veux définir le périmètre et les contrôles applicables (règles + ajustement manuel), pour n'importe quel référentiel | M | 5 | Fonction du socle générique (réunion 05/11, D6) |
 | US-404 | En tant que resp. de mission, je veux clôturer une campagne afin de figer les résultats | M | 3 | Lecture seule ; rapport final haché |
 | US-405 | En tant que resp. de mission, je veux créer la campagne N+1 à partir de la N | S | 5 | Proposition de réutilisation des preuves et N/A (à revalider) |
 
@@ -49,10 +60,10 @@
 | US-503 | En tant qu'auditeur, je veux déclarer un N/A avec motif obligatoire | M | 3 | Évaluateur + date auto |
 | US-504 | En tant que resp. de mission, je veux valider ou refuser les N/A | S | 3 | — |
 | US-505 | En tant qu'auditeur, je veux voir l'historique des modifications d'un contrôle | M | 3 | Qui / quand / avant / après |
-| US-506 | En tant qu'auditeur, je veux lancer une collecte automatique et voir observé vs attendu | M | 8 | Lot 2 ; statut proposé « À vérifier » |
-| US-507 | En tant que contributeur client, je veux télécharger et exécuter un script de collecte puis déposer son résultat | M | 8 | Jeton à usage unique ; hash vérifié |
+| US-506 | En tant qu'auditeur, je veux évaluer un contrôle à partir du résultat d'une **commande bien définie** et voir observé vs attendu | M | 5 | Lot 2 allégé (D9) ; statut proposé « À vérifier » |
+| US-507 | En tant que contributeur client, je veux télécharger et exécuter le script de commandes fixes (lecture seule) puis déposer son résultat | M | 5 | Jeton à usage unique ; hash vérifié ; liste blanche de commandes |
 | US-508 | En tant qu'auditeur, je veux valider en lot les résultats automatiques conformes | S | 3 | — |
-| US-509 | En tant qu'auditeur, je veux obtenir une proposition IA sur une preuve avec citations et confiance | M | 13 | Lot 3 ; passages surlignés ; confiance distincte du statut |
+| US-509 | En tant qu'auditeur, je veux obtenir une proposition IA sur une preuve : **statut (non conforme / partiel / conforme) + explication + justification**, avec citations et confiance | M | 13 | Lot 3 ; **pas de chatbot** (D10) ; passages surlignés ; confiance distincte du statut |
 | US-510 | En tant qu'auditeur, je veux accepter / modifier / rejeter / demander une preuve complémentaire sur une proposition IA | M | 5 | Décision journalisée |
 | US-511 | En tant qu'auditeur, je veux documenter un contrôle compensatoire | C | 3 | — |
 | US-512 | En tant qu'auditeur, je veux évaluer un contrôle sur plusieurs actifs (échantillon) | C | 8 | Agrégation des résultats par actif |
@@ -63,7 +74,7 @@
 | US-601 | En tant qu'utilisateur autorisé, je veux déposer une preuve et la lier à un ou plusieurs contrôles | M | 8 | Antivirus, hash SHA-256, métadonnées CDC § 11.2 |
 | US-602 | En tant qu'auditeur, je veux envoyer une demande de preuve au client | M | 3 | Notification ; statut « En attente de preuve » |
 | US-603 | En tant qu'auditeur, je veux changer le statut d'une preuve (validée, rejetée, obsolète) | M | 2 | — |
-| US-604 | En tant qu'auditeur, je veux être alerté des preuves anciennes / obsolètes | S | 3 | Seuil paramétrable par type |
+| US-604 | En tant qu'auditeur, je veux être alerté des preuves anciennes / obsolètes | S | 3 | Seuil paramétrable par type ; définition d'« obsolète » à confirmer avec MNA |
 | US-605 | En tant qu'auditeur, je veux réutiliser une preuve d'une campagne précédente après revalidation | S | 3 | — |
 
 ## EPIC 7 — Écarts & remédiation (Lot 1, Sprint 3)
@@ -102,4 +113,4 @@
 | US-1006 | En tant que super admin, je veux des suggestions de correspondances par similarité sémantique | C | 8 | Jamais publiées sans validation |
 
 ## Won't (perspectives, hors PFE)
-- Agent résident en supervision continue · connecteurs cloud (AWS/Azure) · application mobile · fine-tuning du LLM · export OSCAL complet · SSO avec l'AD des clients.
+- Agent résident en supervision continue · connecteur distant (LDAPS/WinRM/SSH) · connecteurs cloud (AWS/Azure) · application mobile · fine-tuning du LLM · export OSCAL complet · **chatbot / assistant conversationnel** (exclu par MNA, D10) · **facturation** des licences · import d'anciennes versions PCI DSS (D8).

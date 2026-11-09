@@ -1,7 +1,7 @@
 # Guide PCI DSS v4.0.1 — pour le projet
 
 > Objectif : comprendre PCI DSS assez bien pour **modéliser** le référentiel dans la plateforme, **identifier ce qui est automatisable**, et **parler le langage des auditeurs** MNA.
-> ⚠️ Ce guide résume ; la référence reste le document officiel *PCI DSS v4.0.1* (Document Library sur pcisecuritystandards.org). Vérifiez toujours les numéros et valeurs exactes dans le texte officiel avant de les coder en règles.
+> ⚠️ Ce guide résume ; la référence reste le document officiel *PCI DSS v4.0.1* [S1] (Document Library sur pcisecuritystandards.org). Vérifiez toujours les numéros et valeurs exactes dans le texte officiel avant de les coder en règles.
 
 ---
 
@@ -10,6 +10,7 @@
 - **Qui doit être conforme ?** Toute entité qui **stocke, traite ou transmet** des données de carte, ou qui peut **impacter la sécurité** de cet environnement : commerçants, banques acquéreuses/émettrices, processeurs, hébergeurs, prestataires.
 - **Qui l'impose ?** Les **marques de cartes** (Visa, Mastercard…) via les contrats, pas une loi. Le PCI SSC rédige le standard ; les marques définissent qui doit faire un ROC ou un SAQ.
 - **Versions :** v3.2.1 (retirée 31/03/2024) → v4.0 (mars 2022, retirée 31/12/2024) → **v4.0.1 (juin 2024, en vigueur)**. Les 51 exigences « future-dated » de la v4.0 sont obligatoires depuis le **31/03/2025**. Une consultation pour la prochaine version a eu lieu en juin–juillet 2026 (thèmes évoqués : nouvelles technologies, IA).
+- ✅ **Important pour le projet (réunion du 05/11/2026) :** le **référentiel GIE Monétique est basé sur PCI DSS 3.2**. On n'importe **pas** la v3.2.1 dans la plateforme, mais il faut **connaître les changements 3.2.1 → 4.0** pour construire le mapping GIE ↔ v4.0.1 : renumérotation et réorganisation des exigences, *customized approach*, analyses de risque ciblées (TRA), MFA élargie (8.4.2), mots de passe ≥ 12 caractères (8.3.6, contre 7 en 3.2.1), etc. Source officielle : *Summary of Changes from PCI DSS 3.2.1 to 4.0* [S2] (voir [Bibliographie.md](Bibliographie.md)).
 - **Données protégées :**
 
 | Catégorie | Éléments | Stockage autorisé ? |
