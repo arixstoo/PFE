@@ -8,26 +8,28 @@
 
 **Introduction générale** (3–4 p.) — contexte, problématique (*« Comment réduire la dépendance aux traitements manuels dans les évaluations de conformité PCI DSS et GIE Monétique tout en conservant la validation humaine et une traçabilité complète ? »*), objectifs, contributions, organisation du mémoire.
 
-**Chapitre 1 — Contexte et état de l'art** (20–25 p.) · *rédiger en S2–S4*
-1. Organisme d'accueil (MNA Algérie)
+**Chapitre 1 — Contexte et étude de l'existant** (25–30 p.) · *rédiger en S1–S5 (avant janvier)* — **grande partie du mémoire (consigne MNA)**, chaque point **référencé** ([Bibliographie.md](../connaissances/Bibliographie.md), pas de Wikipédia)
+1. Organisme d'accueil (MNA Algérie) et ses deux modèles d'usage visés (service d'audit / SaaS sous licence)
 2. La monétique et l'écosystème algérien (GIE Monétique, CIB, EDAHABIA)
-3. PCI DSS v4.0.1 (structure, processus d'évaluation, ROC/SAQ)
-4. Le référentiel GIE Monétique
-5. Cadre réglementaire algérien (loi 18-07 / 25-11, ANPDP, souveraineté)
-6. Automatisation de la conformité : GRC, compliance-as-code, OSCAL, mapping (OLIR)
-7. LLM et RAG pour l'analyse documentaire ; enjeux d'une IA locale
-8. Étude comparative des solutions existantes et positionnement
+3. PCI DSS v4.0.1 (structure, processus d'évaluation, ROC/SAQ) et évolution 3.2.1 → 4.0 [S1], [S2]
+4. Le référentiel GIE Monétique (basé sur PCI DSS 3.2)
+5. Cadre réglementaire algérien (loi 18-07 / 25-11, ANPDP, souveraineté) [S12]
+6. **Le processus d'audit actuel chez MNA** (entretiens + observation d'audits, démarche ISO 19011 [S9])
+7. Automatisation de la conformité : GRC, conformité continue [A13], OSCAL [S7], mapping (OLIR [S5])
+8. LLM et RAG pour l'analyse documentaire de conformité [A1]–[A5] ; risques (hallucinations, injection de prompt) [A6], [A7], [S11]
+9. **Étude comparative des solutions existantes** (outils testés) et positionnement
+10. **Étude de l'existant technologique** : architectures SaaS multi-tenant [A14], [D2], runtimes et modèles d'IA locale [A8]–[A11], choix justifiés ([Choix_Technologiques.md](../conception/Choix_Technologiques.md))
 
-**Chapitre 2 — Analyse et spécification des besoins** (15 p.) · *S3–S5*
+**Chapitre 2 — Analyse et spécification des besoins** (15 p.) · *S4–S7*
 1. Acteurs et rôles · 2. Besoins fonctionnels (EF) · 3. Besoins non fonctionnels et de sécurité · 4. Cas d'utilisation · 5. Scénarios (séquences) · 6. Backlog et planification (Scrum, Gantt)
 
-**Chapitre 3 — Conception** (20 p.) · *S5–S7*
-1. Architecture globale (C4) et choix technologiques (ADR) · 2. Modèle de données (versioning, multi-tenant) · 3. Moteur de règles · 4. Moteur de mapping (algorithme, table de décision) · 5. Pipeline IA locale · 6. Conception de la sécurité (threat model STRIDE, RBAC) · 7. Maquettes
+**Chapitre 3 — Conception** (20 p.) · *S7–S9*
+1. Architecture globale (C4), **deux modes de déploiement** (service / SaaS), choix technologiques (ADR), dimensionnement du serveur · 2. Modèle de données (versioning, multi-tenant) · 3. Moteur de règles · 4. Moteur de mapping (algorithme, table de décision) · 5. Pipeline IA locale · 6. Conception de la sécurité (threat model STRIDE, RBAC) · 7. Maquettes
 
 **Chapitre 4 — Réalisation** (20 p.) · *au fil des sprints*
 1. Environnement de travail et laboratoire · 2. Lot 1 Socle (captures) · 3. Lot 2 Collecteurs · 4. Lot 3 IA locale · 5. Lot 4 Mapping · 6. Déploiement
 
-**Chapitre 5 — Tests, évaluation et sécurité** (12–15 p.) · *S22–S24*
+**Chapitre 5 — Tests, évaluation et sécurité** (12–15 p.) · *S25–S27*
 1. Stratégie de tests (unitaires, intégration, E2E) et résultats · 2. **Évaluation de l'IA** (matrice de confusion, faux conformes, comparatif de modèles) · 3. **Taux d'automatisation** des contrôles PCI · 4. **Couverture croisée** obtenue · 5. Gain de temps estimé · 6. Tests de sécurité et rapport · 7. Recette avec MNA
 
 **Conclusion générale et perspectives** (3 p.) — bilan, limites honnêtes, perspectives (autres référentiels : ISO 27001, SWIFT CSCF ; agents continus ; export OSCAL ; fine-tuning ; suggestions de mapping…).
@@ -48,6 +50,8 @@
 - Comment garantissez-vous qu'un client ne voit jamais les données d'un autre ?
 - Que se passe-t-il si l'IA hallucine un « Conforme » ?
 - Pourquoi une IA locale et pas une API cloud ? Quelles performances sur votre matériel ?
+- En mode SaaS, comment garantissez-vous qu'une organisation licenciée ne voit jamais les données d'une autre ?
+- Pourquoi l'IA ne donne-t-elle qu'un statut justifié et pas un chatbot ?
 - Pourquoi un mapping partiel ne peut-il jamais donner « Conforme » ?
 - Comment gérez-vous la sortie d'une nouvelle version de PCI DSS ?
 - Les scripts de collecte sont-ils dangereux pour le SI du client ?

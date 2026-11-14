@@ -4,7 +4,16 @@
 > **Entreprise :** Mare Nostrum Advising Group — MNA Algérie (cabinet de conseil, pôle cybersécurité & SI)
 > **Source :** cahier des charges `PCI_DSS_PFE_CDC_V12102026.docx` (rédigé le 12/10/2026, révisé le 14/10/2026)
 
-Ce document reprend **chaque section du cahier des charges (CDC)**, explique ce qu'elle veut dire concrètement, et ajoute ce qu'il faut savoir pour la réaliser. Les blocs « 💡 Interprétation » sont mon analyse ; tout le reste est fidèle au CDC.
+Ce document reprend **chaque section du cahier des charges (CDC)**, explique ce qu'elle veut dire concrètement, et ajoute ce qu'il faut savoir pour la réaliser. Les blocs « 💡 Interprétation » sont mon analyse ; les blocs « ✅ **Réponse MNA** » viennent des réunions avec les encadrants ; tout le reste est fidèle au CDC.
+
+> 📌 **Mise à jour du 09/11/2026 — réunion de lancement du 05/11/2026** ([compte rendu](organisation/Comptes_Rendus/CR_2026-11-05_Reunion_lancement.md)) :
+> - Le CDC est un **brouillon flexible**, qui pourra être adapté aux besoins métier.
+> - La plateforme fonctionnera en **deux modes** : **A. service** (MNA audite ses clients) et **B. SaaS sous licence** (des entreprises l'utilisent pour leurs audits internes) → § 15.
+> - Elle repose sur un **socle d'audit générique** (périmètre, contrôles, applicabilité) ; PCI DSS et GIE sont des **modules** → § 5.2.
+> - Le **GIE Monétique est basé sur PCI DSS 3.2** ; pas d'anciennes versions PCI à gérer → § 1.2, § 6.2.
+> - Méthode Agent/Script : **commandes bien définies**, incluse mais pas prioritaire → § 10.1.
+> - IA : **statut + explications + justifications**, **pas de chatbot** → § 11.3.
+> - Questions encore ouvertes : [Questions_Encadrant.md](organisation/Questions_Encadrant.md).
 
 ---
 
@@ -84,6 +93,7 @@ flowchart LR
 - **GIE = Groupement d'Intérêt Économique** créé par les banques algériennes, Algérie Poste et la Banque d'Algérie pour gérer le système de paiement par carte interbancaire **CIB** (et l'interopérabilité avec la carte EDAHABIA d'Algérie Poste).
 - Selon des responsables du GIE (interview 2022), le référentiel compte **plus de 350 exigences de sécurité**, **inspiré de PCI DSS et ISO 27000**, couvrant carte, ATM (GAB), TPE, interfaces, routage et processing. Des **audits externes** des banques étaient prévus.
 - ⚠️ **Le texte du référentiel n'est pas public.** Vous **devez** l'obtenir via MNA. C'est le **premier blocage à lever**.
+- ✅ **Réponse MNA (05/11) :** le référentiel GIE est **basé sur PCI DSS 3.2**. Conséquence : pour le mapping vers PCI DSS v4.0.1, le document officiel *Summary of Changes 3.2.1 → 4.0* [S2] du PCI SSC donne la correspondance de numérotation et de contenu — c'est un accélérateur majeur du travail de mapping.
 - Détails → [connaissances/GIE_Monetique_et_Contexte_Algerien.md](connaissances/GIE_Monetique_et_Contexte_Algerien.md).
 
 ### 1.3 Contexte du projet
@@ -174,6 +184,8 @@ La plateforme fonctionne en **multi-clients avec cloisonnement strict**. Chaque 
 - Liste des campagnes passées et en cours
 - Documents généraux **réutilisables après validation** (ex. PSSI, organigramme)
 
+> ❓ **Question ouverte (réunion n°2) :** quels exemples précis de « documents généraux » MNA réutilise-t-elle d'une campagne à l'autre ?
+
 ### 5.2 Campagne d'évaluation
 À la création : **client, nom, référentiel principal, version, dates, équipe, périmètre, actifs**.
 
@@ -207,6 +219,9 @@ stateDiagram-v2
 
 > 💡 Les transitions ne sont pas listées dans le CDC : le diagramme ci-dessus est une **proposition** à valider avec MNA. « Clôturée » = **immuable** (lecture seule), indispensable pour l'historique.
 
+> ✅ **Réponse MNA (05/11) — « Périmètre et contrôles en cours de définition » :** nous demandions pourquoi la plateforme devrait *définir* le périmètre et les contrôles, alors qu'un QSA ne fait que les *valider*. Réponse : cela **dépend de l'environnement et du référentiel choisi** ; c'est une fonction du **socle de la plateforme et des audits génériques**, avant d'être une fonction du module PCI DSS.
+> → Conception : le **socle générique** permet de définir un périmètre (actifs, sites, applications) et de sélectionner/ajuster les contrôles applicables pour **n'importe quel** référentiel ; le module PCI DSS ajoute ses règles d'applicabilité propres (CDE, scoping). En mode SaaS (§ 15), une entreprise qui s'audite elle-même **doit** pouvoir définir son périmètre.
+
 ---
 
 ## 6. Gestion des référentiels et des versions
@@ -237,6 +252,8 @@ stateDiagram-v2
 - Objectif : traçabilité, **reproductibilité**, historique.
 
 > 💡 Technique : une version publiée est **immuable** (statut `brouillon → publiée → dépréciée`). Les campagnes pointent vers `ReferentialVersion` et ses `Control` ; pour comparer deux campagnes sur deux versions différentes, il faudra une **table de correspondance inter-versions** (ex. PCI v4.0.1 → v5). Détails → [conception/Modele_de_Donnees.md](conception/Modele_de_Donnees.md).
+
+> ✅ **Réponse MNA (05/11) :** **pas besoin** d'importer d'anciennes versions (ex. PCI DSS 3.2.1). Seul le **mapping avec le GIE Monétique** compte, sachant que le GIE est **basé sur PCI DSS 3.2**. Le mécanisme de versioning reste obligatoire (CDC) pour les **futures** versions (la prochaine version de PCI DSS est en préparation).
 
 ---
 
@@ -300,6 +317,8 @@ flowchart LR
 ```
 > 💡 C'est le **scénario de démonstration** de votre soutenance : faites-le dérouler de bout en bout sur un client fictif (« Banque Démo ») en 10 minutes.
 
+> ❓ **Question ouverte (réunion n°2) :** où se situent les **étapes de remédiation** (non-conformités → actions → retest) dans ce diagramme ? Proposition à présenter : une boucle « Valider les résultats → Remédiation → Retest → Valider » avant la clôture, cohérente avec les statuts *En remédiation* / *En retest* du § 5.2.
+
 ---
 
 ## 10. Méthodes d'évaluation des contrôles
@@ -316,6 +335,8 @@ Vérification à partir d'infos collectées **directement** sur le système cibl
 - Résultat automatique conservant **valeur observée** et **valeur attendue**
 
 > 💡 Exemple : script PowerShell qui lit la *Default Domain Password Policy* → `MinPasswordLength = 8` ; critère PCI 8.3.6 = 12 → résultat proposé **Non conforme**, observé `8`, attendu `≥ 12`, horodatage, hash du résultat brut.
+
+> ✅ **Réponse MNA (05/11) :** cette méthode prend la forme de **commandes bien définies** ; elle doit être **incluse**, mais **sans s'y focaliser** (MNA ne pourra pas beaucoup l'utiliser chez ses clients). → Lot 2 **allégé** : une bibliothèque fermée de commandes en lecture seule (AD, Linux, éventuellement Windows) + le moteur de règles. Pas de connecteur distant ni d'agent résident dans le MVP.
 
 ### 10.2 Méthode 2 — Preuve déposée + analyse par IA locale
 L'utilisateur dépose une preuve ; l'**IA locale** analyse, identifie les éléments pertinents, propose un résultat **avec justification**.
@@ -357,10 +378,15 @@ PDF, DOCX, XLSX, CSV · images/captures · fichiers de configuration · exports 
 ### 11.3 Analyse locale par IA
 L'IA est un **mécanisme d'assistance** : extraire les infos d'une politique, analyser une config, rechercher les éléments attendus. **Toute conclusion explicable et validable.**
 
+> ✅ **Réponse MNA (05/11) — sortie attendue :** essentiellement un **statut de conformité** (non conforme / partiellement conforme / conforme) **avec explications et justifications**. **Ce n'est pas un chatbot.**
+> → Sortie = JSON structuré : `statut proposé` + `justification` + `critères satisfaits / non satisfaits` + `citations (page, extrait)` + `éléments manquants` + `score de confiance`. Le statut est ensuite « À vérifier » jusqu'à la décision de l'auditeur. Base scientifique : RAG [A1] ; travaux proches [A2], [A5] ; risques [A6], [A7] (voir [Bibliographie.md](connaissances/Bibliographie.md)).
+
 ### 11.4 Réutilisation et obsolescence
 - Une preuve peut servir **plusieurs contrôles**.
 - Une preuve d'une campagne précédente peut être **proposée** à la réutilisation mais **doit être revalidée**.
 - Signalement des preuves **anciennes / potentiellement obsolètes** (ex. scan > 3 mois, alors que PCI exige des scans trimestriels).
+
+> ❓ **Question ouverte (réunion n°2) :** « obsolète » **en quel sens** ? Pistes à proposer : (1) date dépassée par rapport à la **fréquence** exigée par le contrôle ; (2) **nouvelle version** du document disponible ; (3) **changement de périmètre** ou d'actif ; (4) preuve issue d'une **campagne précédente** non revalidée. → la plateforme pourrait combiner ces critères avec un seuil par type de preuve.
 
 ---
 
@@ -381,6 +407,8 @@ L'IA est un **mécanisme d'assistance** : extraire les infos d'une politique, an
 
 ### 12.2 KPI principaux
 Total contrôles · applicables · évalués · conformes / partiels / non conformes · **taux d'avancement** · **taux de satisfaction interne** · écarts par criticité · actions ouvertes / clôturées / en retard · **couverture estimée de l'autre référentiel** · **évolution vs campagne précédente**.
+
+> ❓ **Question ouverte (réunion n°2) :** que signifie le **« taux de satisfaction interne »** ?
 
 > 💡 Formules proposées (à valider avec MNA, car « taux de satisfaction interne » n'est pas défini dans le CDC) :
 > - Taux d'avancement = évalués (hors « Non évalué », « En attente », « À vérifier ») / applicables
@@ -434,6 +462,9 @@ La plateforme contient des **informations extrêmement sensibles** : architectur
 ### 14.1 Journal d'audit — événements obligatoires
 Création/modification/clôture de campagne · ajout/suppression/remplacement de preuve · changement de statut d'un contrôle · validation d'un résultat IA/automatique · attribution d'un N/A · création/clôture d'une non-conformité · export/génération de rapport · changements d'administration et de mapping.
 
+> ✅ **MNA (05/11)** insiste sur les **bonnes pratiques de sécurité** et la **sécurité by design** dès la conception.
+> ❓ **Question ouverte (réunion n°2) :** l'**antivirus** des fichiers sera-t-il **fourni par MNA** ou utilise-t-on un antivirus **open source** (ClamAV [D5]) ?
+
 > 💡 Ironie à exploiter dans le mémoire : la plateforme doit elle-même respecter les principes PCI DSS (exigences 7, 8, 10…). Vous pouvez faire une **auto-évaluation** de votre plateforme avec votre plateforme ! Voir [conception/Securite_Plateforme.md](conception/Securite_Plateforme.md).
 
 ---
@@ -452,6 +483,14 @@ Création/modification/clôture de campagne · ajout/suppression/remplacement de
 | Déploiement | **On-premise** ou environnement privé |
 
 > 💡 « On-premise » + « IA locale » ⇒ tout doit tourner **sans Internet** chez MNA ou chez le client : conteneurs Docker, modèle LLM téléchargé à l'avance, pas de CDN externe.
+
+> ✅ **Réponse MNA (05/11) — deux modes de fonctionnement :**
+> | Mode | Qui utilise | Pour quoi | Conséquences techniques |
+> |---|---|---|---|
+> | **A. Service** | MNA (auditeurs) + contributeurs de ses clients | MNA **audite ses clients** | Multi-clients au sein d'une organisation (MNA) — ce que décrit le CDC |
+> | **B. SaaS sous licence** | Des **entreprises** qui achètent une licence | Leurs **audits internes** | **Multi-organisation** : chaque entreprise licenciée est un *tenant* isolé avec ses propres utilisateurs, entités, campagnes ; gestion des **licences et modules** (PCI DSS, GIE…) ; isolation inter-organisations ; déploiement mutualisé **ou** dédié |
+>
+> → Conception : un **modèle à deux niveaux** *Organisation (tenant) → Entité auditée (client) → Campagne*. Dans le mode A, l'organisation est MNA et les entités sont ses clients ; dans le mode B, l'organisation est l'entreprise licenciée et les entités sont ses filiales/périmètres. Un seul code, deux usages. Références : [A14], [D2], [D3]. Détails : [Architecture_Technique.md](conception/Architecture_Technique.md), [Modele_de_Donnees.md](conception/Modele_de_Donnees.md), [Choix_Technologiques.md](conception/Choix_Technologiques.md).
 
 ---
 
@@ -477,21 +516,26 @@ Création/modification/clôture de campagne · ajout/suppression/remplacement de
 9. Jeux de tests et rapport de recette
 10. **Rapport de sécurité avant mise en production**
 
+> ❓ **Questions ouvertes (réunion n°2) :**
+> - Livrable 3 « Maquettes UX/UI » : un fichier **Figma** est-il attendu, ou un autre format ?
+> - Livrable 10 : rapport « développeur » (sécurité by design, SAST/DAST, ASVS [S10]) ou **test d'intrusion** validé par MNA ? *(MNA, 05/11 : bonnes pratiques et sécurité by design exigées ; niveau du rapport négociable plus tard.)*
+
 ---
 
 ## 17. Analyse critique : difficultés, risques et ambiguïtés
 
 | # | Point | Pourquoi c'est un risque | Que faire |
 |---|---|---|---|
-| R1 | **Référentiel GIE non public** | Sans lui : pas de Mode 2, pas de mapping réel | Le demander **semaine 1** ; en attendant, travailler avec un **référentiel GIE fictif** (structure plausible) pour ne pas bloquer le dev |
+| R1 | **Référentiel GIE non public** | Sans lui : pas de Mode 2, pas de mapping réel | Le demander **semaine 1** (relancer chaque lundi) ; en attendant, **référentiel GIE fictif** structuré comme PCI DSS 3.2 (le GIE en est issu) |
 | R2 | **Périmètre énorme** (4 lots = travail d'une équipe produit sur 1 an) | Risque de tout faire à moitié | Négocier un **MVP** : Lot 1 complet + Lot 2 (AD + Linux/Windows) + Lot 3 (PoC solide sur 2–3 types de preuves) + Lot 4 (moteur + mapping sur 1–2 domaines). Voir [02_Plan_Roadmap.md](02_Plan_Roadmap.md) |
 | R3 | **Construction du mapping = expertise** | Des centaines de paires à qualifier (complet/partiel…) | Brouillon assisté (IA/Claude) **+ validation par un consultant MNA**. Commencer tôt, en parallèle du dev |
-| R4 | **Matériel pour l'IA locale** | Un LLM utile demande un GPU (≥ 12–24 Go VRAM) ou sera lent sur CPU | Demander le matériel ; prévoir des modèles de tailles différentes ; traitement asynchrone |
+| R4 | **Matériel pour l'IA locale** | Un LLM utile demande un GPU (≥ 12–24 Go VRAM) ou sera lent sur CPU | Estimation du VPS envoyée **avant le 16/11** ([Estimation_Ressources_VPS.md](conception/Estimation_Ressources_VPS.md)) ; modèles de tailles différentes ; traitement asynchrone |
 | R5 | **Fiabilité de l'IA** (hallucinations) | Un faux « Conforme » est grave en audit | Citations obligatoires, score de confiance, jamais de validation automatique, jeu de test d'évaluation |
 | R6 | **Accès à des systèmes réels** pour les scripts | Pas d'accès aux SI des clients pendant un PFE | **Laboratoire virtuel** (VMware : Windows Server AD, Linux, pfSense, Wazuh) |
 | R7 | **Droits sur le texte PCI DSS** | Le document PCI SSC est sous licence (téléchargement gratuit avec acceptation) | Importer les identifiants + résumés ; vérifier avec MNA l'usage interne du texte intégral |
-| R8 | **Ambiguïtés du CDC** | « Taux de satisfaction interne », transitions de statuts, criticité, disponibilité, stack imposée ? | Liste dans [Questions_Encadrant.md](organisation/Questions_Encadrant.md) |
-| R9 | **Sécurité de la plateforme** | Elle concentre les failles des clients | Threat model + pentest interne + rapport de sécurité (livrable 10) |
+| R8 | **Ambiguïtés du CDC** (brouillon, évolutif) | « Taux de satisfaction interne », obsolescence, remédiation, antivirus, transitions… | Questions suivies dans [Questions_Encadrant.md](organisation/Questions_Encadrant.md) ; chaque réponse tracée dans un CR |
+| R9 | **Sécurité de la plateforme** | Elle concentre les failles des clients | Sécurité by design + threat model + tests + rapport de sécurité (livrable 10) |
+| R10 | **Mode SaaS** (ajouté le 05/11) | Isolation à deux niveaux, licences, déploiement mutualisé ou dédié : charge supplémentaire | Concevoir le modèle multi-organisation dès la Phase 3 ; facturation hors périmètre PFE |
 
 ---
 

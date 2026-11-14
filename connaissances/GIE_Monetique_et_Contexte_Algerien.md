@@ -1,6 +1,8 @@
 # GIE Monétique & contexte algérien
 
 > ⚠️ Le référentiel de sécurité du GIE Monétique **n'est pas public**. Ce fichier rassemble ce qu'on sait de sources ouvertes ; **il doit être complété dès que MNA vous fournit le document officiel** (section 5 à remplir).
+>
+> ✅ **Confirmé par MNA (réunion du 05/11/2026) :** le référentiel GIE est **basé sur PCI DSS 3.2**. On n'importe pas d'anciennes versions PCI dans la plateforme ; le travail porte sur le **mapping GIE ↔ PCI DSS v4.0.1**.
 
 ---
 
@@ -22,14 +24,14 @@ D'après des interviews de responsables « Risque, sécurité et conformité » 
 | Information | Valeur rapportée |
 |---|---|
 | Volume | **Plus de 350 exigences de sécurité** (une source plus ancienne parlait de ~200) |
-| Inspiration | **PCI DSS** et **ISO 27000** (27001/27002) |
+| Inspiration | **PCI DSS** (version **3.2**, confirmé par MNA le 05/11/2026) et **ISO 27000** (27001/27002) |
 | Objectif | Aligner **toutes les banques de la place sur un seul référentiel sécuritaire** |
 | Domaines évoqués | Sécurité de la **carte**, du **GAB/ATM**, du **TPE**, des **interfaces**, du **routage** et du **processing** |
 | Niveau de conformité | Membres à plus de 75 %, certains à 90 % (2022) |
 | Contrôle | **Audits externes** par des cabinets, prévus à partir de fin 2023 ; cartographie des risques revue annuellement |
 
 ### Conséquences pour le projet
-1. **Fort recouvrement attendu avec PCI DSS** (inspiration directe) → le mapping aura beaucoup de correspondances « complètes » ou « partielles ».
+1. **Fort recouvrement attendu avec PCI DSS** (inspiration directe de la **v3.2**) → beaucoup de correspondances « complètes » ou « partielles ». Comme PCI DSS v4.0.1 a renuméroté et renforcé de nombreuses exigences, une exigence GIE issue de 3.2 sera souvent **moins exigeante** que son équivalent v4.0.1 → attention au **sens** du mapping (voir [Mapping_Croise.md](Mapping_Croise.md) § 2 et § 6, et [S2]).
 2. **Exigences spécifiques au contexte algérien / monétique** (GAB, TPE, interfaces avec le switch CIB, procédures GIE) → contrôles **sans équivalent PCI** (« Non mappé »).
 3. **Exigences d'origine ISO 27001** (gouvernance, SMSI, gestion des risques) → souvent couvertes partiellement par l'exigence 12 de PCI DSS.
 4. Le statut « Partiellement conforme » du CDC vient probablement de la pratique d'audit GIE (contrairement à PCI DSS).
@@ -67,4 +69,4 @@ D'après des interviews de responsables « Risque, sécurité et conformité » 
 
 ## 6. En attendant : référentiel GIE fictif pour développer
 
-Pour ne pas bloquer le développement, créer un fichier `referentiels/gie_fictif_v0.json` avec ~40 exigences plausibles réparties en domaines (Gouvernance, Gestion des accès, Sécurité réseau, Sécurité des GAB/TPE, Cryptographie & HSM, Journalisation, Continuité, Prestataires), clairement marqué **« FICTIF – usage de développement »**. Claude 🤖 peut le générer. Il sera remplacé par le vrai référentiel via l'import (ce qui démontre au passage que la plateforme est générique).
+Pour ne pas bloquer le développement, créer un fichier `referentiels/gie_fictif_v0.json` avec ~40 exigences plausibles (dont une majorité dérivées de la structure PCI DSS 3.2, puisque le vrai GIE en est issu) réparties en domaines (Gouvernance, Gestion des accès, Sécurité réseau, Sécurité des GAB/TPE, Cryptographie & HSM, Journalisation, Continuité, Prestataires), clairement marqué **« FICTIF – usage de développement »**. Claude 🤖 peut le générer. Il sera remplacé par le vrai référentiel via l'import (ce qui démontre au passage que la plateforme est générique).
