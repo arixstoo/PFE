@@ -1,348 +1,526 @@
+# CHAPITRE — CHOIX TECHNOLOGIQUES ET ARCHITECTURE DE LA PLATEFORME
 
-
-# CHAPITRE : CONCEPTION ARCHITECTURALE ET CHOIX TECHNOLOGIQUES BACKEND
-
-## 1. Introduction et Cadre de l’Étude
-
-Le développement de la plateforme de gouvernance et d'audit (`PCI Conformity Manager`) mobilise des modules à fortes contraintes fonctionnelles et techniques (`accounts`, `frameworks`, `campaigns`, `assessments`, `evidence`, `audit_log`). L'orchestration des processus de conformité implique l'exécution de pipelines d'Intelligence Artificielle (notamment *Docling* pour l'extraction documentaire), la génération de rapports dynamiques complexes et la synchronisation de collecteurs de données.
-
-Pour une équipe de développement compacte (deux ingénieurs), la stack technique doit garantir une vélocité maximale tout en répondant aux exigences de performance et de sécurité (*by-design*). L’analyse des choix technologiques s'articule autour de l’adoption de **Django 5.2 (avec DRF)** adossé à un couplage asynchrone **Celery + Redis (ou Valkey)**.
+> Plateforme : **PCI Conformity Manager** — gestion des campagnes d'audit PCI DSS v4.0.1 / GIE Monétique, avec analyse des preuves par IA locale.
+> Les diagrammes sont en Mermaid (rendu natif sur GitHub et dans l'aperçu VS Code). Pour le mémoire Word : exporter chaque diagramme en PNG/SVG via [mermaid.live](https://mermaid.live).
 
 ---
 
-## 2. Analyse Comparative et Justification du Framework Principal
+## 1. Contraintes qui pilotent les choix
 
-Plusieurs options architecturales majeures ont été évaluées pour structurer le cœur applicatif du système.
+Chaque technologie retenue répond à au moins une de ces contraintes :
 
-### A. Django 5.2 + DRF (Django Rest Framework) — *Option Retenue*
+| # | Contrainte | Conséquence technique |
+|---|---|---|
+| K1 | **Deux modes** : service (MNA audite ses clients) et SaaS sous licence | Un seul code, livré en **une instance dédiée par organisation** (modèle Silo) |
+| K2 | **On-premise, sans Internet** | Tout en conteneurs Docker, aucun CDN ni API cloud |
+| K3 | **IA locale** : aucune preuve envoyée à une API publique (loi 18-07) | LLM, embeddings et extraction exécutés sur le serveur |
+| K4 | **Isolation stricte** entre organisations | Isolation **physique** : base, stockage et conteneurs propres à chaque organisation |
+| K5 | **Sécurité by design** (exigence MNA) | Frameworks avec protections natives, antivirus, secrets en coffre |
+| K6 | **Produit vendable** | Licences permissives (éviter l'AGPL dans le cœur) |
+| K7 | **Binôme, ~7 mois** | Technologies matures, bien documentées, rapides à maîtriser |
 
-Django adopte une philosophie « *batteries-included* » (tout inclus), fournissant nativement l’ensemble des briques nécessaires à un back-office d’entreprise : un ORM performant, un système de migrations transactionnelles, un module d'authentification robuste et un framework de gestion des permissions orienté rôle (RBAC). Le *Django Rest Framework* (DRF) complète cette architecture en exposant des API REST sécurisées.
+### Méthode de décision
 
-* **Points forts :**
-* **Intégration et Cohérence de l'Écosystème :** Python s’impose comme la *lingua franca* du traitement de données et de l’IA. Le même langage orchestre l’API, l’évaluation des jeux de test, l’intégration des modèles (Docling) et la génération de rapports.
-* **L’Admin Django natif :** Il offre gratuitement une interface de back-office sécurisée permettant d'administrer et d'importer les référentiels réglementaires sans nécessiter le développement d'une interface spécifique.
-* **Sécurité native :** Protections par défaut contre le Top 10 OWASP (injections SQL, failles CSRF, XSS, détournement de sessions).
+Chaque option a été notée de 1 à 5 sur six critères pondérés :
 
-
-* **Points faibles :**
-* **Performance I/O brute modeste :** Le modèle synchrone par défaut de Django consomme davantage de ressources (threads/mémoire) sous forte charge concurrente par rapport aux environnements asynchrones purs.
-* **Mitigation :** Ce verrou technologique est pallié par l'intégration d'un découplage asynchrone via Celery pour les tâches lourdes.
-
-
-
-### B. FastAPI
-
-Construit sur Starlette et Pydantic, FastAPI est un framework asynchrone ultra-rapide doté d'une génération de documentation OpenAPI automatique.
-
-* **Évaluation :** Bien que ses performances en entrées/sorties (I/O) soient excellentes et sa popularité croissante, FastAPI ne propose aucun module d’administration natif, de gestion de permissions préétablie ou de système de migration intégré. L'assemblage de ces briques (SQLAlchemy, Alembic, systèmes de sécurité) aurait exigé l'écriture d'un volume important de code « de plomberie » sécuritaire, augmentant la surface d'attaque et la dette technique pour un binôme.
-* **Positionnement stratégique :** FastAPI conserve toutefois toute sa pertinence s'il est confiné à un rôle de micro-service d’inférence IA isolé (comme envisagé dans les choix technologiques globaux).
-
-### C. Spring Boot 4 (Java) & ASP.NET Core 10 (C#)
-
-* **Évaluation :** Des solutions d'une grande robustesse, standardisées dans le secteur bancaire, dotées d'une sécurité d'entreprise mature (Spring Security).
-* **Limites :** L'écosystème d'extraction documentaire et d'intelligence artificielle est historiquement moins natif et plus complexe à interconnecter en Java qu'en Python. De plus, la verbosité de Java impose une charge de développement disproportionnée pour une équipe de deux personnes, ces technologies n'étant retenues qu'en cas de contrainte réglementaire stricte imposant la JVM (ex: exigences du MNA).
-
-### D. Rust (Axum ou Loco)
-
-* **Évaluation :** Axum (couche fine sur Hyper/Tower) et Loco (inspiré de Rails) garantissent une sécurité mémoire absolue et des performances brutes de premier plan.
-* **Limites :** L’écosystème Rust demeure jeune (versions `0.x` avec des APIs mouvantes). Aucun ORM ne rivalise avec la maturité de l’Admin Django. Surtout, la génération de rapports Word complexes — un livrable central du projet — repose sur des bibliothèques (`docx-rs`, `rdocx`) immatures face à la robustesse des moteurs Python (`docxtpl`, `WeasyPrint`). Rust a donc été écarté pour le monolithe applicatif afin de ne pas compromettre les délais de livraison.
-
-| Critère d'Évaluation | Django 5.2 + DRF | FastAPI | Spring Boot 4 | Rust (Axum/Loco) |
-| --- | --- | --- | --- | --- |
-| **Vitesse de développement** | Maximale | Élevée | Modérée (Verbosité) | Faible (Complexité) |
-| **Back-office / Admin** | Natif (Intégré) | Absent | À assembler | Absent / Partiel |
-| **Écosystème IA / Docling** | Natif (Python) | Natif (Python) | Complexe (Passerelles) | Jeune / Complexe |
-| **Performance I/O brute** | Modeste (Synchrone) | Excellente | Très élevée | Maximale |
-| **Arbitrage pour le PFE** | **Retenu** | Écarté (Monolithe) | Écarté (Équipe 2 pers.) | Écarté (Immaturité doc) |
-
+```mermaid
+pie showData title Poids des critères de décision (%)
+    "Sécurité" : 25
+    "Adéquation au besoin" : 20
+    "Productivité du binôme" : 20
+    "Déploiement on-prem + SaaS" : 15
+    "Licence commerciale" : 10
+    "Écosystème / pérennité" : 10
+```
 
 ---
 
-## 3. Gestion de l’Asynchronisme : Étude Comparative des Files de Tâches
+## 2. Vue d'ensemble de la stack retenue
 
-La nature synchrone par défaut de Django implique qu’une requête HTTP lourde (telle que l’analyse de preuves textuelles par un modèle d’IA ou la compilation d’un rapport volumineux) monopolise un thread applicatif, entraînant des risques de saturation sous forte charge. Pour pallier cette limite d'I/O sans basculer vers une complexité micro-service prématurée, l'architecture recourt à une file d'attente de tâches asynchrones.
+```mermaid
+mindmap
+  root((PCI Conformity<br/>Manager))
+    Interface
+      Next.js + React
+      TypeScript
+      shadcn/ui, TanStack, Recharts
+    Cœur métier
+      Django 5.2 LTS
+      Django REST Framework
+    Données
+      PostgreSQL 16
+      pgvector
+      Modèle Silo
+    Asynchrone
+      Celery + Beat
+      Redis / Valkey
+    Fichiers
+      API S3
+      MinIO
+    Sécurité
+      Nginx
+      ClamAV
+      OpenBao
+      django-otp + argon2id
+    IA locale
+      Docling
+      BGE-M3
+      Ollama / vLLM
+      Qwen3 / Mistral
+    Rapports
+      docxtpl
+      WeasyPrint
+      openpyxl
+    Déploiement
+      Docker Compose
+```
 
-Quatre approches principales ont été évaluées pour l'environnement du projet :
-
-### A. Étude comparative des solutions de tâches de fond
-
-| Solution | Positionnement & Maturité | Avantages | Inconvénients / Limites pour le PFE | Arbitrage |
-| --- | --- | --- | --- | --- |
-| **Celery (+ Redis)** | Standard de de fait de l'écosystème Django. | Extrêmement robuste, gestion native des planifications complexes (*Celery Beat*), politiques de *retries* (rejeux) avancées, scalabilité horizontale mature. | Configuration initiale plus dense que des solutions minimalistes. | **Retenu** (Idéal pour des pipelines IA longs et planifiés). |
-| **Dramatiq / RQ** | Alternatives plus légères et orientées simplicité de syntaxe. | Courbe d'apprentissage initiale plus douce, API épurée. | Moins riches en fonctionnalités natives (absence de planification robuste équivalente à Beat, écosystème d'extensions plus restreint). | **Écarté** (Fonctionnalités insuffisantes pour la complexité des campagnes d'audit). |
-| **Django Tasks** | Module de tâches asynchrones natif introduit dans les versions récentes de Django. | Intégration transparente, pas de dépendance à un écosystème tiers complexe. | Encore en phase d'adoption ; **moins mature pour des pipelines IA longs**, traitements lourds et gestion fine de la concurrence. | **Écarté** (Risque technique trop élevé pour les processus critiques du PFE). |
-
-### B. Justification du choix de Celery
-
-Celery s'impose comme le choix idoine. Dans un contexte d'audit de conformité, l'application doit gérer des tâches de fond longues (exécution de scripts d'évaluation de la conformité, inférences Docling). Celery garantit un découplage total entre le cycle de vie de la requête HTTP et le traitement de la donnée, tout en permettant une planification rigoureuse des contrôles automatisés via *Celery Beat*.
-
----
-
-## 4. Choix du Courtier de Messages (Message Broker) : Redis / Valkey
-
-Pour interconnecter l'application Django (le producteur) et les workers Celery (les consommateurs), un courtier de messages est indispensable. L'architecture retient explicitement **Redis** (ou son alternative open-source compatible **Valkey**).
-
-### A. Justification technique et fonctionnelle
-
-1. **Architecture en mémoire vive (RAM) :** En stockant les structures de données en mémoire, Redis offre des temps de latence de l'ordre de la microseconde, garantissant un passage de témoin quasi-instantané entre l'application web et les workers d'arrière-plan.
-2. **Mutualisation des rôles (Double usage) :** Redis ne sert pas uniquement de courtier pour Celery ; il fait également office de **système de cache haute performance** pour Django (accélération des requêtes sur les référentiels et les tableaux de bord multi-tenants). Cette mutualisation simplifie l'architecture globale sur le serveur de déploiement (VPS).
-3. **Alternative moderne (Valkey) :** L'intégration potentielle de *Valkey* (fork open-source soutenu par la Linux Foundation) garantit la pérennité technologique, la compatibilité stricte avec l'API Redis et une gouvernance neutre face aux évolutions de licences de marché.
-
-### B. Pourquoi écarter les alternatives ?
-
-* **Bases de données relationnelles (ex: PostgreSQL comme broker) :** Utiliser la base de données principale pour gérer les files de messages de Celery génère un verrouillage excessif des tables (*table locks*), dégrade les performances globales de l'ORM et s'avère inadapté face à des flux de messages à haute fréquence.
-* **RabbitMQ :** Bien qu'incontestablement supérieur sur la garantie de persistance absolue en environnements bancaires critiques, RabbitMQ introduit une surcharge opérationnelle (consommation mémoire plus élevée, complexité de configuration des *Exchanges* et *Bindings*) non justifiée pour le dimensionnement et la vélocité requises par un projet de fin d'études mené en binôme. Redis/Valkey offre le rapport simplicité/performance optimal.
-
----
-
-## 5. Synthèse et Validation Globale de la Stack Backend
-
-L'architecture validée repose sur le triptyque :
-
-
-$$\text{Django 5.2 / DRF} \quad \longleftrightarrow \quad \text{Redis / Valkey} \quad \longleftrightarrow \quad \text{Celery Workers}$$
-
-* **La couche synchrone (Django + DRF)** garantit la sécurité applicative (protection OWASP, RBAC, gestion des tenants) et la rapidité de gestion des interfaces d'administration et des API.
-* **La couche asynchrone (Celery + Redis/Valkey)** absorbe l'ensemble des traitements lourds (analyse documentaire par Docling, calculs de scores d'évaluation, génération de rapports de conformité) en s'affranchissant des contraintes de performance d'I/O synchrone de Python.
-
-Cette cohérence technique offre un équilibre parfait entre robustesse industrielle et agilité de développement, répondant rigoureusement aux exigences académiques et professionnelles du projet.
-
-
-
-
-
-
-# 6. Validation de l’Interface Utilisateur (Frontend) : Next.js 15 / React 19 & TypeScript
-
-## 6.1. Problématique Ergonomique et Architecturale
-
-Dans le cadre d’une plateforme de gouvernance, d’audit et de conformité (*PCI Conformity Manager*), l’interface utilisateur ne se limite pas à de simples formulaires de saisie. Elle doit restituer des volumes importants de données analytiques et hiérarchiques : tableaux de bord de suivi des campagnes d'audit, matrices d'évaluation multi-critères (PCI-DSS / GIE-Monétique) dotées de filtres dynamiques, visualisation graphique de l'évolution des scores de conformité, ainsi que la gestion fluide des preuves documentaires (`evidence`).
-
-Pour répondre à ces exigences d'interactivité tout en maintenant une séparation stricte entre la logique métier (exposée par l'API Django REST Framework) et la couche de présentation, l'architecture retient une approche découplée fondée sur le triptyque **Next.js 15, React 19 et TypeScript**.
-
-## 6.2. Justification Technique de la Pile Frontend
-
-L'articulation de ces trois technologies repose sur une complémentarité fonctionnelle rigoureuse :
-
-* **React 19 (Moteur de rendu par composants) :** Permet de structurer l'interface en composants modulaires, isolés et réutilisables (grilles d'audit, indicateurs de conformité, sélecteurs de preuves). Son DOM virtuel garantit des mises à jour visuelles fluides et ciblées sans rechargement global de l'application.
-* **Next.js 15 (Framework d'orchestration et de routage) :** Encadre React en fournissant un routage structuré, une gestion optimisée du cycle de vie des requêtes et un rendu hybride combinant le *Server-Side Rendering* (SSR) pour la rapidité du chargement initial et le *Client-Side Rendering* (CSR) pour la réactivité des interactions utilisateur.
-* **TypeScript (Sécurisation par typage statique fort) :** Impose un contrat de données strict entre le frontend et les schémas JSON renvoyés par Django REST Framework. Le contrôle des types à la compilation réduit considérablement les erreurs d'exécution liées à la manipulation d'objets complexes (référentiels, résultats d'évaluation IA) et facilite la maintenabilité du code au sein du binôme.
-* **Richesse de l’écosystème UI (Tableaux et Graphes analytiques) :** L'adoption de React ouvre l'accès aux bibliothèques standards de l'industrie pour la visualisation de données et l'ergonomie d'entreprise, telles que **TanStack Table** (pour le tri, la pagination et le filtrage avancé des grilles d'exigences), **Recharts** (pour la restitution graphique des taux de conformité et des écarts d'audit), ainsi que **Tailwind CSS** et **shadcn/ui** pour garantir une interface moderne, accessible et homogène.
-
-## 6.3. Étude Comparative des Alternatives Frontend
-
-Quatre approches architecturales ont été évaluées afin de valider la pertinence de ce choix :
-
-| Critère d'Évaluation | Next.js 15 / React 19 + TS | Django Templates + HTMX + Alpine.js | Vue 3 / Nuxt 3 + TS | Angular 19 |
-| --- | --- | --- | --- | --- |
-| **Paradigme Architectural** | Découplé (*API-First*, Hybride SSR/CSR) | Monolithique (Rendu HTML serveur) | Découplé (*API-First*, Hybride SSR/CSR) | Découplé (*API-First*, SPA stricte) |
-| **Richesse UI (Tableaux, Graphes)** | **Maximale** (TanStack, Recharts, shadcn/ui) | Modérée (Limité sur les états clients complexes) | Élevée (PrimeVue, Nuxt UI) | Élevée (Angular Material) |
-| **Complexité d'Intégration** | Modérée (Gestion CORS, auth JWT/Cookies) | **Faible** (Sessions natives Django) | Modérée (Gestion CORS, auth) | Élevée (Courbe d'apprentissage RxJS) |
-| **Arbitrage pour le PFE** | **Retenu** | Écarté | Écarté | Écarté |
-
-### Justification du rejet des alternatives :
-
-* **Django Templates + HTMX + Alpine.js :** Bien que cette approche monolithique offre une vélocité initiale élevée et simplifie l'authentification (absence de problématiques *Cross-Origin Resource Sharing* - CORS), elle montre ses limites dès lors que l'interface requiert une gestion d'état complexe côté client, notamment pour les tableaux de bord analytiques interactifs, les graphiques dynamiques et les matrices d'évaluation à filtres multiples.
-* **Vue 3 / Nuxt 3 :** Offre des capacités techniques et une philosophie très proches de l'écosystème React/Next.js avec une syntaxe appréciée pour sa clarté. Toutefois, l'écosystème React demeure plus vaste en matière de composants spécialisés pour les applications de gouvernance et d'analyse de données, justifiant la préférence accordée à Next.js.
-* **Angular 19 :** Bien que particulièrement structuré et répandu dans les grands comptes bancaires, son architecture rigide et sa verbosité (imposant notamment la maîtrise de la programmation réactive via RxJS) représentent une charge d'apprentissage et de développement disproportionnée pour une équipe de deux ingénieurs.
-
-
-
-
-
+| Couche | Choix retenu | Principale alternative écartée | Raison du choix (en une ligne) |
+|---|---|---|---|
+| Back-end | **Django 5.2 LTS + DRF** | FastAPI | Auth, permissions, admin, migrations et protections OWASP déjà fournis |
+| Front-end | **Next.js + React + TypeScript** | Django Templates + HTMX | Tableaux de bord et matrices interactives riches |
+| Base de données | **PostgreSQL 16 + pgvector** | MySQL, MongoDB | ACID, JSONB et vecteurs dans une seule base |
+| Multi-tenant | **Silo** : une instance complète par organisation | Pool (base partagée), Bridge (schéma par client) | Isolation physique, aucune fuite possible entre organisations |
+| Tâches de fond | **Celery + Redis/Valkey** | Dramatiq, RQ, Django Tasks | Planification (Beat), rejeux, maturité |
+| Stockage preuves | **MinIO** (API S3) | Disque local, BLOB en base | Standard S3 auto-hébergé, URL présignées, une instance par Silo |
+| Reverse proxy | **Nginx** | Caddy, Traefik | Standard, contrôle fin des en-têtes et limites d'upload |
+| Antivirus | **ClamAV** (sous réserve MNA) | Antivirus fourni par MNA | Open source, intégrable en tâche Celery |
+| Secrets | **`.env` (dev) → OpenBao (prod)** | HashiCorp Vault | Vault est sous licence BSL depuis 2023 |
+| Extraction | **Docling** | PyMuPDF | MIT, conserve la structure (pages, tableaux) ; PyMuPDF est AGPL |
+| Embeddings | **BGE-M3** | multilingual-e5 | Multilingue FR / EN / AR, 1024 dimensions |
+| Runtime LLM | **Ollama** (dev) / **vLLM** (prod GPU) / llama.cpp (CPU) | API cloud | IA locale ; API compatible OpenAI → changement par configuration |
+| Rapports | **docxtpl + WeasyPrint + openpyxl** | Rust `docx-rs`, ReportLab | Modèle Word MNA éditable sans code |
+| Déploiement | **Docker Compose** | Kubernetes | Suffisant pour un serveur, livrable on-prem |
 
 ---
 
-# CHAPITRE : PERSISTANCE DES DONNÉES ET ARCHITECTURE MULTI-TENANT
+## 3. Back-end : Django 5.2 LTS + Django REST Framework
 
-## 1. Exigences et Contraintes Métiers
+**Pourquoi Django ?** Il fournit en natif tout ce qu'un back-office d'audit exige : ORM et migrations, authentification, permissions par rôle (RBAC), interface d'administration (import des référentiels sans écran à développer) et protections contre les failles OWASP courantes (injection SQL, CSRF, XSS, clickjacking). Python est aussi le langage de l'IA, de l'extraction documentaire et des rapports : **un seul langage pour tout le back-end**. La version 5.2 est **LTS** (support de sécurité jusqu'en avril 2028), ce qui couvre la durée du projet et sa mise en production.
 
-La plateforme de gouvernance et d'audit (*PCI Conformity Manager*) manipule des données hautement sensibles et réglementées (référentiels PCI-DSS v4.0.1, GIE Monétique, comptes utilisateurs, campagnes d'évaluation, preuves documentaires et journaux d'audit immuables `audit_log`).
+**Point faible et parade :** Django est synchrone par défaut, donc peu adapté aux traitements longs dans une requête HTTP → ces traitements sont déportés dans des workers **Celery** (§ 6).
 
-La couche de persistance doit répondre à trois impératifs majeurs :
+```mermaid
+xychart-beta
+    title "Back-end : score pondéré (sur 5)"
+    x-axis ["Django + DRF", "FastAPI", "Spring Boot", "ASP.NET Core", "NestJS"]
+    y-axis "Score" 0 --> 5
+    bar [4.85, 4.30, 4.05, 3.95, 3.90]
+```
 
-1. **Intégrité transactionnelle stricte (ACID) :** Garantir qu'une campagne d'audit ou qu'une modification de score ne puisse pas se retrouver dans un état incohérent en cas de panne.
-2. **Isolation rigoureuse des locataires (Multi-Tenancy) :** Dans une optique SaaS ou multi-organisationnelle, les données de chaque entité auditée doivent être hermétiquement cloisonnées afin d'éviter toute fuite d'informations inter-entreprises.
-3. **Flexibilité de modélisation :** Capacité à stocker des structures de données semi-structurées (comme les métadonnées dynamiques extraites par l'IA *Docling* à partir des documents de preuve).
+| Critère | Django + DRF | FastAPI | Spring Boot (Java) | Rust (Axum / Loco) |
+|---|---|---|---|---|
+| Vitesse de développement | **Maximale** | Élevée | Modérée (verbeux) | Faible |
+| Admin / auth / permissions | **Natifs** | À assembler | Spring Security (mature) | Absents / partiels |
+| Écosystème IA et documents | **Natif (Python)** | Natif (Python) | Passerelles nécessaires | Jeune |
+| Performance I/O brute | Modeste | Excellente | Très élevée | Maximale |
+| **Décision** | **Retenu** | Écarté pour le cœur | Écarté (charge pour un binôme) | Écarté (bibliothèques Word immatures) |
 
----
-
-## 2. Choix du Système de Gestion de Base de Données (SGBD) : PostgreSQL
-
-L’arbitrage technique s'est porté sur **PostgreSQL** comme SGBD relationnel principal du monolithe Django.
-
-### A. Justification technique
-
-* **Maturité et conformité relationnelle :** PostgreSQL est le SGBD de référence de l'écosystème Django, offrant une compatibilité native et optimisée via l'ORM Django.
-* **Support natif des types JSON/JSONB :** Crucial pour stocker et indexer efficacement les structures de données flexibles (résultats d'analyse de l'IA, configurations de formulaires d'évaluation personnalisables) sans alourdir le schéma relationnel figé.
-* **Sécurité et cloisonnement avancé :** PostgreSQL intègre des mécanismes puissants de contrôle d'accès au niveau des lignes (*Row-Level Security* - RLS) et une gestion granulaire des rôles et des schémas.
-
-### B. Étude comparative des SGBD
-
-| Critère d'Évaluation | PostgreSQL | MySQL / MariaDB | MongoDB (NoSQL) |
-| --- | --- | --- | --- |
-| **Intégrité ACID & Relationnel** | **Excellente** (Standard industriel) | Très bonne | Faible (Orienté documents / BASE) |
-| **Support de données JSON** | **Avancé** (Type `JSONB` indexé) | Bon (Amélioré récemment) | Natif |
-| **Intégration Django / ORM** | **Native et optimale** | Très bonne | Limitée (Nécessite des ODM tiers) |
-| **Adaptabilité à l'audit de conformité** | **Maximale** (Garanties transactionnelles fortes) | Bonne | Inadaptée pour des relations strictes |
-
-*Justification du rejet des alternatives :* MongoDB a été écarté en raison de l'absence de garanties transactionnelles ACID rigoureuses sur des structures relationnelles complexes (liaisons entre `frameworks`, `campaigns` et `assessments`), indispensables pour un outil d'audit réglementaire.
+> FastAPI reste une option pour un **micro-service IA isolé** si l'on veut séparer l'inférence plus tard. Ce n'est pas prévu pour le MVP (monolithe modulaire).
 
 ---
 
-## 3. Stratégie d’Isolation Multi-Tenant
+## 4. Front-end : Next.js + React + TypeScript
 
-Pour répondre au besoin de segmentation des environnements clients, deux grandes approches d'architecture multi-tenant ont été comparées :
+L'interface doit afficher des **tableaux de bord de campagne**, des **matrices d'évaluation filtrables** (PCI DSS / GIE), l'**évolution des scores** et la gestion des preuves.
 
-### A. Approche 1 : Base de données isolée par tenant (*Database-per-Tenant*)
+| Brique | Rôle |
+|---|---|
+| **React** | Interface en composants réutilisables (grille d'audit, indicateurs, sélecteur de preuves) |
+| **Next.js** (App Router) | Routage, rendu serveur (SSR) pour le premier affichage, rendu client pour l'interactivité. Déployé en conteneur Node `standalone`, **sans CDN** (K2) |
+| **TypeScript** | Contrat de types avec les réponses JSON de l'API DRF → moins d'erreurs à l'exécution |
+| **shadcn/ui + Tailwind CSS** | Composants accessibles et cohérents |
+| **TanStack Table / Query** | Tri, filtres, pagination des exigences ; cache des appels API |
+| **Recharts** | Graphiques de conformité et d'écarts |
 
-* **Principe :** Chaque client dispose d'une base de données physique totalement séparée.
-* **Avantages :** Sécurité et étanchéité maximales des données ; facilité de sauvegarde/restauration par client.
-* **Inconvénients :** Surcharge opérationnelle lourde, complexité accrue des migrations de schémas (ex: appliquer une modification de table Django sur des dizaines de bases distinctes).
+**Pas de problème CORS :** Nginx sert le front et l'API sous **le même domaine** (`/` → Next.js, `/api` → Django). Les cookies de session restent `HttpOnly` et `SameSite`, sans exposer de jeton au JavaScript.
 
-### B. Approche 2 : Isolation par Schéma Logique au sein d'une même base (*Schema-per-Tenant* / `django-tenants`)
-
-* **Principe :** Une seule instance PostgreSQL, mais un **schéma SQL distinct par client** (ex: `schema_client_a`, `schema_client_b`), géré dynamiquement par le routeur de requêtes de Django.
-* **Avantages :** Bon compromis entre isolation stricte (les tables sont physiquement séparées par des espaces de noms SQL) et mutualisation des coûts d'infrastructure.
-* **Inconvénients :** Gestion des connexions et des migrations un peu plus complexe.
-
-### C. Approche 3 : Table partagée avec discriminant de tenant (`tenant_id` / Shared Schema)
-
-* **Principe :** Toutes les données résident dans les mêmes tables, filtrées en permanence par une clé étrangère `tenant_id` portée par chaque modèle.
-* **Avantages :** Simplicité absolue de développement et de migration.
-* **Inconvénients :** Risque critique de fuite de données en cas d'oubli d'un filtre `tenant_id` dans une requête ORM (faille de sécurité majeure dans un contexte d'audit).
-
-### D. Arbitrage retenu pour le projet
-
-Pour concilier la sécurité réglementaire (exigée par les normes d'audit) et la faisabilité technique pour un binôme, le projet s'oriente vers un **cloisonnement logique par schéma (`Schema-per-Tenant`)** ou une isolation applicative stricte via un filtrage centralisé par `tenant_id` renforcé par des politiques de sécurité au niveau des lignes de PostgreSQL (`Row-Level Security`), garantissant qu'aucun locataire ne puisse accéder aux données d'un tiers.
+| Critère | **Next.js / React + TS** | Django Templates + HTMX | Vue 3 / Nuxt | Angular |
+|---|---|---|---|---|
+| Richesse UI (tableaux, graphes) | **Maximale** | Limitée pour les états complexes | Élevée | Élevée |
+| Courbe d'apprentissage | Modérée | **Faible** | Modérée | Élevée (RxJS) |
+| Écosystème de composants | **Le plus vaste** | Réduit | Bon | Bon |
+| **Décision** | **Retenu** | Écarté | Écarté (écosystème plus petit) | Écarté (trop lourd pour un binôme) |
 
 ---
 
-## 4. Synthèse Globale de l’Architecture du Projet
+## 5. Données : PostgreSQL 16 + pgvector + modèle Silo
 
-L’intégration de la base de données finalise la validation de la pile technique complète de la plateforme *PCI Conformity Manager* :
+### 5.1 Choix du SGBD
 
-$$\text{Next.js / TS (Frontend)} \quad \longleftrightarrow \quad \text{Django 5.2 / DRF (Backend)} \quad \longleftrightarrow \quad \text{PostgreSQL (Persistance \& Schemas)}$$
+PostgreSQL réunit dans **une seule base** les trois besoins du projet :
 
-$$\text{et découplage asynchrone via } \quad \longleftrightarrow \quad \text{Celery} + \text{Redis / Valkey}$$
+1. **Transactions ACID** : une campagne ou un score ne reste jamais dans un état incohérent.
+2. **JSONB indexé** : règles d'automatisation, résultats de collecte, sorties de l'IA.
+3. **pgvector** : stockage et recherche des vecteurs du RAG (§ 9), sans base vectorielle séparée.
 
-Cette architecture confère au système la robustesse, la scalabilité et le niveau de sécurité indispensable pour un logiciel de gouvernance et de conformité de niveau professionnel.
+| Critère | **PostgreSQL** | MySQL / MariaDB | MongoDB |
+|---|---|---|---|
+| ACID et relations N–N (contrôles ↔ preuves ↔ mapping) | **Excellent** | Très bon | Faible |
+| JSON | **JSONB indexé** | Bon | Natif |
+| Recherche vectorielle | **pgvector** | Limitée | Atlas (cloud) |
+| Intégration Django | **Native** | Très bonne | ODM tiers |
+| **Décision** | **Retenu** | Écarté | Écarté |
 
----
+### 5.2 Stratégie multi-tenant : modèle Silo
 
+**Décision : chaque organisation dispose de sa propre instance complète** (front, API, PostgreSQL, MinIO, Redis, workers, IA). Aucune donnée n'est partagée entre deux organisations : l'isolation est **physique**, pas seulement logique.
 
----
+```mermaid
+flowchart TB
+    IMG["Une seule image Docker<br/>(même code pour tous)"]
+    IMG --> I1
+    IMG --> I2
+    IMG --> I3
+    subgraph I1["Instance MNA"]
+        direction TB
+        A1["Mode service<br/>Next.js + Django + workers"]
+        A2[("PostgreSQL")]
+        A3[("MinIO")]
+        A4["Clients audités :<br/>Banque X · Processeur Y"]
+        A1 --- A2
+        A1 --- A3
+        A1 --- A4
+    end
+    subgraph I2["Instance Org. 1"]
+        direction TB
+        B1["SaaS hébergé par MNA<br/>Next.js + Django + workers"]
+        B2[("PostgreSQL")]
+        B3[("MinIO")]
+        B1 --- B2
+        B1 --- B3
+    end
+    subgraph I3["Instance Banque Z"]
+        direction TB
+        C1["On-premise chez la banque<br/>Next.js + Django + workers"]
+        C2[("PostgreSQL")]
+        C3[("MinIO")]
+        C1 --- C2
+        C1 --- C3
+    end
+```
 
-# CHAPITRE : ARCHITECTURE DE STOCKAGE DES PREUVES ET GESTION DES ARTEFACTS DOCUMENTAIRES
+| Modèle | Isolation | Coût d'exploitation | Décision |
+|---|---|---|---|
+| Pool : base partagée + `organization_id` | Logique : un filtre oublié = fuite | Faible | Écarté (risque de fuite inacceptable pour des données d'audit bancaire) |
+| Bridge : un schéma par organisation (`django-tenants`) | Forte mais base commune | Migrations × N schémas | Écarté |
+| **Silo** : une instance par organisation | **Physique** | Plus élevé (une pile par client) | **Retenu** |
 
-## 1. Contexte et Enjeux de la Gestion des Preuves
+**Pourquoi Silo ?**
+- **Sécurité maximale** : une erreur de code ne peut pas exposer les données d'une autre organisation, puisqu'elles ne sont pas dans la même base.
+- **Souveraineté** : une banque peut héberger son instance chez elle (on-premise, loi 18-07), sans changement de code.
+- **Code plus simple** : pas de colonne `organization_id` ni de routage de schéma dans chaque requête.
+- **Exploitation indépendante** : sauvegarde, restauration, mise à jour ou suppression d'un client sans toucher aux autres.
 
-La plateforme *PCI Conformity Manager* repose sur un module central dédié à la collecte et à l'analyse des preuves de conformité (`evidence`). Dans le cadre des normes de sécurité bancaire (PCI-DSS v4.0.1), chaque exigence réglementaire doit être étayée par des artefacts tangibles : documents de politiques de sécurité, rapports de vulnérabilités au format PDF, captures d’écran d’infrastructure ou fichiers de configuration brute.
+**Contrepartie :** chaque nouvelle organisation demande le déploiement d'une pile. Elle est automatisée par un script (`docker-compose.prod.yml` + `.env` propre au client + initialisation).
 
-Le système de stockage associé doit répondre à des contraintes strictes :
-
-* **Étanchéité et Sécurité Multi-Tenant :** Empêcher absolument qu’un locataire (*tenant*) puisse accéder aux preuves documentaires d'un autre organisme.
-* **Interopérabilité avec l'IA (*Docling*) :** Permettre un accès rapide et direct aux fichiers binaires pour les scripts d'extraction et d'analyse textuelle automatisée.
-* **Scalabilité et Intégrité :** Dissocier les flux binaires lourds de la base de données relationnelle pour garantir les performances globales du système.
-
----
-
-## 2. Analyse Comparative des Solutions de Stockage
-
-Trois options majeures ont été évaluées pour l'hébergement des fichiers de preuves :
-
-### A. Stockage local sur le système de fichiers du serveur (Local Filesystem)
-
-* **Principe :** Les fichiers sont sauvegardés directement dans un répertoire du disque dur du VPS (ex: `/media/evidence/`).
-* **Avantages :** Simplicité de mise en œuvre initiale, aucune infrastructure tierce requise.
-* **Inconvénients :** Inadapté à une architecture extensible ou cloud, complexité de gestion des permissions en cas de montée en charge, et vulnérabilité en cas de migration ou de redémarrage de conteneur.
-
-### B. Stockage Objet compatible S3 (ex: MinIO ou AWS S3) — *Option Retenue*
-
-* **Principe :** Les fichiers sont stockés sous forme d'objets dans un espace bucket hautement sécurisé, accessible via une API standardisée (protocole S3). Dans le cadre d’un déploiement sur VPS souverain (auto-hébergé), **MinIO** constitue la solution open-source de référence.
-* **Avantages :**
-* Isolation logique parfaite des objets par bucket ou par préfixe de dossier lié au *tenant_id*.
-* Génération d'URL présignées (*Pre-signed URLs*) : le backend génère un lien d'accès temporaire et sécurisé pour télécharger une preuve sans exposer directement le serveur de stockage.
-* Parfaite adéquation avec les pipelines asynchrones Celery et l'IA *Docling*, qui peuvent télécharger les fichiers à la demande.
-
-
-* **Inconvénients :** Légère surcharge d'infrastructure (déploiement d'un service conteneurisé supplémentaire).
-
-### C. Stockage Binaire direct en Base de Données (Champs BLOB PostgreSQL)
-
-* **Principe :** Insérer les fichiers sous forme de flux binaires directement dans les tables relationnelles.
-* **Avantages :** Centralisation totale des données.
-* **Inconvénients :** Engorgement rapide de la base de données, dégradation critique des performances des requêtes de l'ORM, et complexité accrue des sauvegardes (`pg_dump`). Solution vigoureusement rejetée pour des fichiers documentaires lourds.
-
-| Critère d'Évaluation | Stockage Local (Disque VPS) | Stockage Objet S3 / MinIO | Stockage en Base (BLOB) |
-| --- | --- | --- | --- |
-| **Scalabilité & Évolutivité** | Faible | **Excellente** | Médiocre |
-| **Sécurité & Liens Temporaires** | Complexe à coder | **Natif (URL présignées)** | Géré par l'application |
-| **Intégration Pipeline IA (Docling)** | Moyenne | **Optimale (Accès flux)** | Lourde |
-| **Impact sur la Base de Données** | Aucun | **Nul (Désacouplé)** | Critique (Surcharge) |
-| **Arbitrage pour le PFE** | Écarté | **Retenu** | Écarté |
-
----
-
-## 3. Synthèse de l'Architecture Globale et Flux de Traitement d’une Preuve
-
-L’intégration du stockage objet finalise la chaîne de traitement fonctionnelle de la plateforme :
-
-1. **Téléversement :** L'utilisateur soumet une preuve via l'interface Next.js. Le fichier transite par l'API sécurisée Django.
-2. **Enregistrement :** Django stocke les métadonnées dans **PostgreSQL** (nom, taille, hachage SHA-256, lien vers le *tenant*) et transfère le fichier binaire vers le serveur **MinIO (S3)**.
-3. **Traitement asynchrone :** Django émet une tâche via **Celery / Redis**, signalant au worker qu'un nouveau document est disponible.
-4. **Analyse IA :** Le worker récupère le fichier depuis le stockage objet, l'injecte dans le moteur **Docling** pour l'extraction des clauses textuelles et met à jour le score de conformité de l'évaluation correspondante.
-
-Cette architecture garantit la robustesse, la sécurité des données sensibles et la modularité requises pour un système d'information de gouvernance de niveau professionnel.
+**À l'intérieur d'une instance** (cas de MNA qui audite plusieurs clients), la séparation entre entités auditées reste **applicative** : chaque utilisateur n'accède qu'aux campagnes et entités qui lui sont affectées (RBAC côté serveur, managers Django filtrés), vérifiée par des tests d'accès croisé (IDOR).
 
 ---
 
+## 6. Traitements asynchrones : Celery + Redis / Valkey
 
+Analyse IA d'une preuve, collectes, génération de rapports : ces traitements prennent de quelques secondes à plusieurs minutes. Ils ne doivent pas bloquer une requête HTTP.
 
+```mermaid
+sequenceDiagram
+    autonumber
+    actor U as Utilisateur
+    participant API as Django / DRF
+    participant R as Redis / Valkey
+    participant W as Worker Celery
+    U->>API: Action lourde (analyser, générer un rapport)
+    API->>R: Dépose la tâche
+    API-->>U: 202 Accepté (réponse immédiate)
+    R->>W: Distribue la tâche
+    W->>W: Traitement (IA, rapport…)
+    W->>API: Résultat enregistré en base
+    API-->>U: Notification (statut « À vérifier » / rapport prêt)
+```
 
+| Solution | Points forts | Limites | Décision |
+|---|---|---|---|
+| **Celery** | Standard Django, **Beat** (tâches planifiées), rejeux automatiques, files séparées par type de worker | Configuration plus dense | **Retenu** |
+| Dramatiq / RQ | API simple | Pas de planification équivalente à Beat | Écarté |
+| Django Tasks (`django.tasks`, Django 6.0) | Intégré à Django | Récent, pas de worker de production intégré | Écarté (à surveiller) |
 
-
-
-
-
-
-
-
-
-
-
-
-
+**Courtier : Redis (ou Valkey).** En mémoire, donc très rapide, et il sert **aussi de cache** Django : un seul service pour deux rôles. **Valkey** (fork open source de Redis sous la Linux Foundation, compatible API) évite le risque lié au changement de licence de Redis. RabbitMQ est plus robuste en persistance mais plus lourd à exploiter, sans gain réel à notre échelle. Utiliser PostgreSQL comme courtier chargerait inutilement la base principale.
 
 ---
 
-## 6. Références Bibliographiques (Standards et Documentation Technique)
+## 7. Stockage des preuves : MinIO (API S3)
 
-1. **Django Software Foundation.** *Django 5.2 Release Notes and Asynchronous Support Documentation*. Disponible sur : `docs.djangoproject.com` (Consulté en 2026).
-2. **Celery Project.** *Celery: Distributed Task Queue Documentation*, version 5.x. Disponible sur : `docs.celeryq.dev`.
-3. **The Linux Foundation.** *Valkey: An Open-Source High-Performance Data Store (Fork & Community Governance)*. Documentation technique officielle, 2025–2026. Disponible sur : `valkey.io`.
-4. **OWASP Foundation.** *OWASP Top Ten: The Ten Most Critical Web Application Security Risks*. Standards de sécurité applicative.
+Les preuves (PDF, DOCX, exports CSV, configurations, captures) sont **hors de la base** : PostgreSQL ne garde que les métadonnées (nom, taille, **SHA-256**, entité auditée, contrôles liés).
 
-### 7.2. Références Bibliographiques Complémentaires (Frontend)
+| Critère | Disque local du serveur | **Stockage objet MinIO (S3)** | BLOB en base |
+|---|---|---|---|
+| Évolutivité | Faible | **Excellente** | Médiocre |
+| Liens de téléchargement temporaires | À coder | **URL présignées natives** | Via l'application |
+| Accès par les workers IA | Moyen | **Direct** | Lourd |
+| Impact sur la base | Aucun | **Aucun** | Critique (taille, sauvegardes) |
+| **Décision** | Secours MVP (disque chiffré) | **Retenu** | Écarté |
 
-5. **Vercel Inc.** *Next.js 15 Documentation: App Router, Server Components and Hybrid Rendering*. Disponible sur : `nextjs.org/docs` (Consulté en 2026).
-6. **Meta Open Source.** *React 19 Official Documentation: Component Architecture and State Management*. Disponible sur : `react.dev` (Consulté en 2026).
-7. **Microsoft Corporation.** *TypeScript Handbook: Static Type Checking for JavaScript Applications*. Disponible sur : `typescriptlang.org/docs`.
-8. **W3C (World Wide Web Consortium).** *Fetch Standard & Cross-Origin Resource Sharing (CORS) Protocol Specification*. Standards du Web.
+- **MinIO** est la référence open source du stockage objet compatible S3 auto-hébergé : léger, un seul conteneur, adapté au déploiement on-premise et au modèle Silo (**un MinIO par instance**).
+- **Le code ne parle qu'à l'API S3** (`django-storages` / `boto3`) : le stockage reste remplaçable par configuration, sans réécrire l'application.
+- Les objets sont rangés **par entité auditée et par campagne** (`entite_<id>/campagne_<id>/…`) et ne sont jamais exposés directement : le back-end délivre une **URL présignée** à durée courte après contrôle des droits.
+- Chiffrement côté serveur (SSE) activé, bucket privé, accès réservé au réseau Docker interne.
+- Licence **AGPL-3.0** : MinIO est utilisé **tel quel, comme service séparé** joint par l'API S3, sans modification de son code (point à confirmer avec MNA pour la vente du produit).
 
-## 5. Références Bibliographiques (Persistance et Multi-Tenancy)
+---
 
-9. **PostgreSQL Global Development Group.** *PostgreSQL Documentation: JSON Types, Row Security Policies and Schema Management*. Disponible sur : `postgresql.org/docs`.
-10. **Django Software Foundation.** *Django Database Access, Migrations and Multi-database Routing Guides*. Disponible sur : `docs.djangoproject.com`.
-11. **Percona / Enterprise Database Standards.** *Architectural Patterns for Multi-Tenant Data Isolation in SaaS Applications*. Technical Whitepaper.
+## 8. Sécurité : défense en profondeur
 
+```mermaid
+flowchart LR
+    C[Navigateur] -->|HTTPS TLS 1.2/1.3| N["① Nginx<br/>TLS, en-têtes de sécurité,<br/>taille max d'upload, rate limit"]
+    N --> A["② Django<br/>session HttpOnly + MFA TOTP,<br/>RBAC, CSRF"]
+    A --> T["③ Isolation<br/>instance Silo + RBAC par entité"]
+    A --> F["④ Fichiers<br/>type MIME réel, taille,<br/>ClamAV, SHA-256"]
+    A --> S["⑤ Secrets<br/>.env en dev, OpenBao en prod"]
+    A --> L["⑥ audit_log<br/>journal append-only"]
+```
 
-## 4. Références Bibliographiques (Stockage et Sécurité Documentaire)
+| Pilier | Choix | Justification |
+|---|---|---|
+| **Authentification** | Session Django en **cookie `HttpOnly`, `Secure`, `SameSite=Lax`** + **django-otp** (TOTP) + hachage **argon2id** | Le jeton n'est jamais accessible au JavaScript (contrairement à un JWT en `localStorage`, vulnérable au XSS) ; MFA pour les rôles sensibles |
+| **Autorisation** | RBAC côté serveur, par organisation et par campagne | Aucune décision de droit côté front |
+| **SSO (Should)** | Keycloak (OIDC) | En SaaS, chaque organisation pourra brancher son annuaire |
+| **Secrets** | `.env` validé au démarrage (dev) → **OpenBao** (prod) | Aucun secret dans Git ; OpenBao (MPL 2.0) plutôt que Vault (BSL) |
+| **Fichiers** | Liste blanche d'extensions, **type MIME réel**, taille max, **ClamAV** en tâche Celery | Une preuve non analysée n'atteint jamais Docling ; rejet consigné dans `audit_log` |
+| **Reverse proxy** | **Nginx** | Standard industriel, contrôle fin des en-têtes (CSP, HSTS, X-Frame-Options). Caddy (TLS automatique) reste une alternative pour un serveur de démo |
+| **IA** | Conteneur LLM sur un **réseau Docker interne sans route Internet** ; extraits traités comme des **données**, jamais comme des instructions | Démontrable au jury ; limite l'injection de prompt indirecte |
+| **Qualité du code (CI)** | ruff, mypy, pytest, ESLint, Playwright, Semgrep, Bandit, pip-audit, Gitleaks, Trivy, OWASP ZAP | Vérification selon **OWASP ASVS 5.0 niveau 2** |
 
-12. **MinIO Inc.** *MinIO Object Storage Architecture and S3 API Compatibility Documentation*. Disponible sur : `min.io/docs`.
-13. **OWASP Foundation.** *File Upload Security Cheat Sheet: Preventing Malicious File Execution and Unsafe Storage*. Standards de sécurité des applications web.
-14. **Cloud Storage Standards Working Group.** *Object Storage vs. Block Storage Architectural Patterns for Enterprise Compliance Systems*. Technical Journal, 2025–2026.
+> ⏳ **En attente MNA :** antivirus fourni par MNA ou ClamAV ? L'intégration est la même (tâche Celery), seul le moteur change.
 
+---
 
+## 9. Intelligence artificielle locale : extraction, embeddings, RAG
 
+**Objectif :** pour un contrôle donné (ex. PCI DSS 8.3.6), l'IA lit les preuves déposées et **propose** un statut (conforme / partiel / non conforme / insuffisant) avec **justification, citations et score de confiance**. L'auditeur valide toujours. **Ce n'est pas un chatbot** (décision réunion 05/11) : la sortie est un JSON structuré, mesurable.
 
+### 9.1 Les briques
+
+| Étape | Outil | Ce qu'il fait | Pourquoi lui |
+|---|---|---|---|
+| Extraction | **Docling** (MIT, IBM Research) | Convertit PDF / DOCX / XLSX / PPTX / images en document structuré : titres, paragraphes, **tableaux**, **numéros de page** ; OCR pour les scans | Garde la structure, local, licence permissive. PyMuPDF écarté (AGPL) |
+| Fichiers texte (configs, CSV) | Lecture directe (Python, `csv`) | Pas besoin de conversion | Plus simple et exact |
+| Découpage | Chunker de Docling (`HybridChunker`) | Coupe le document en passages (*chunks*) en respectant titres et tableaux | Un passage = une idée, avec sa page |
+| Embeddings | **BGE-M3** | Transforme chaque passage en **vecteur de 1024 nombres** qui représente son sens | Multilingue (FR / EN / AR), entrées longues (jusqu'à 8192 tokens) |
+| Index vectoriel | **pgvector** (index HNSW) | Stocke les vecteurs et trouve les plus proches (similarité cosinus) | Dans PostgreSQL : mêmes droits et mêmes sauvegardes que les données |
+| Génération | LLM local via **Ollama** (dev) / **vLLM** (prod GPU) / llama.cpp (CPU) | Lit les extraits et rend un JSON de décision | API compatible OpenAI : on change de runtime par configuration |
+| Contrôle de sortie | Schéma JSON + vérification des citations | Rejette un JSON invalide ; vérifie que chaque citation existe vraiment dans le texte | Limite les hallucinations |
+
+### 9.2 Runtime et modèle
+
+| Runtime | Atout | Limite | Usage |
+|---|---|---|---|
+| **Ollama** | Installation triviale, catalogue de modèles | Débit faible en requêtes concurrentes | Développement, mode service |
+| **vLLM** | Débit très supérieur sous charge (PagedAttention) | GPU NVIDIA obligatoire | Production SaaS avec GPU |
+| **llama.cpp** | Très léger, CPU, modèles quantifiés GGUF | Moins de fonctions de service | Serveur sans GPU |
+
+**Modèles candidats** (Apache 2.0) : Qwen3 8B / 14B et Mistral Small 24B. Le choix final se fera par **notre propre benchmark** sur un jeu de preuves annotées (Lot 3), selon le matériel du VPS (CPU seul, GPU 16 Go ou 24 Go).
+
+---
+
+## 10. Génération des rapports
+
+| Format | Outil | Raison |
+|---|---|---|
+| **Word** (.docx) | **docxtpl** (Jinja2 dans un modèle Word) | MNA garde la main sur la charte : le modèle se modifie dans Word, sans code |
+| **PDF** | **WeasyPrint** (HTML/CSS → PDF) | Rendu fidèle, licence BSD |
+| **Excel** | **openpyxl** | Exports de matrices d'évaluation |
+| CSV / JSON | Natif Python | Échanges et archivage |
+
+Les rapports sont générés par un **worker Celery dédié** puis déposés dans le stockage S3. Rust (`docx-rs`) a été écarté : bibliothèques en version `0.x`, trop jeunes pour des rapports professionnels.
+
+---
+
+## 11. Déploiement : Docker Compose
+
+- **Un seul paquet Docker, une pile par organisation (Silo)** : instance MNA (mode service), instance par organisation licenciée (SaaS) hébergée par MNA, ou instance installée chez le client (on-premise).
+- **Ajouter un client = lancer une nouvelle pile** avec son propre `.env`, sa base, son MinIO et ses secrets, via un script d'initialisation.
+- **Deux réseaux Docker** : `frontend` (Nginx ↔ Next.js / API) et `backend` **interne** (`internal: true`) pour la base, Redis, le stockage et le LLM → le LLM n'a **aucune route vers Internet**.
+- **Modèles IA pré-téléchargés** dans l'image ou un volume : fonctionnement hors ligne.
+- Livrables : `docker-compose.prod.yml`, `.env.example`, script d'initialisation (organisation, admin, import des référentiels), sauvegarde / restauration (`pg_dump` + stockage objet).
+- Kubernetes est écarté : inutile pour un serveur unique, et plus lourd à sécuriser.
+
+---
+
+## 12. Architecture globale de la plateforme
+
+```mermaid
+flowchart TB
+    subgraph USERS["Utilisateurs"]
+        direction LR
+        U1["Auditeur / Resp. mission"]
+        U2["Contributeur client"]
+        U3["Direction / lecteur"]
+    end
+
+    NGINX["Nginx<br/>HTTPS · en-têtes de sécurité · limites d'upload"]
+    USERS -->|HTTPS| NGINX
+    U2 -.->|"résultat JSON signé<br/>(script de collecte)"| NGINX
+
+    subgraph APP["Réseau Docker « frontend »"]
+        direction LR
+        FE["Next.js + React + TS<br/>tableaux de bord · matrices"]
+        API["Django 5.2 + DRF<br/>campaigns · assessments · evidence<br/>findings · reporting · audit_log · ai"]
+        FE -->|"appels /api"| API
+    end
+    NGINX -->|"/"| FE
+    NGINX -->|"/api"| API
+
+    subgraph BACK["Réseau interne — sans Internet"]
+        direction TB
+        RD[("Redis / Valkey<br/>file de tâches + cache")]
+        subgraph WORK["Workers Celery + Beat"]
+            direction LR
+            W1["Sécurité<br/>scan des preuves"]
+            W2["IA<br/>Docling · chunks · BGE-M3 · RAG"]
+            W3["Rapports<br/>docxtpl · WeasyPrint"]
+            W4["Collectes<br/>moteur de règles"]
+        end
+        subgraph DATA["Données"]
+            direction LR
+            PG[("PostgreSQL 16<br/>données · JSONB · pgvector")]
+            S3[("MinIO (S3)<br/>preuves · rapports")]
+            BAO["OpenBao<br/>secrets"]
+        end
+        AV["ClamAV"]
+        LLM["Runtime IA local<br/>Ollama / vLLM<br/>LLM + BGE-M3"]
+        RD --> WORK
+        W1 --> AV
+        W2 --> LLM
+        WORK --> DATA
+    end
+
+    API --> RD
+    API --> DATA
+```
+
+**Lecture du schéma :**
+1. Tout le trafic entre par **Nginx** (HTTPS). Le front Next.js et l'API Django partagent le même domaine.
+2. L'**API Django** porte toute la logique métier et les contrôles de droits. Elle ne fait jamais de traitement lourd : elle dépose une tâche dans **Redis**.
+3. Les **workers Celery** spécialisés (sécurité, IA, rapports, collectes) consomment les tâches. **Celery Beat** lance les tâches planifiées.
+4. **PostgreSQL** garde les données et les vecteurs ; **MinIO** garde les fichiers ; **OpenBao** garde les secrets.
+5. Le **runtime IA** est sur le réseau interne : aucune donnée ne sort du serveur.
+6. Ce schéma représente **une instance** : en modèle Silo, chaque organisation possède sa propre copie complète de cette pile.
+
+---
+
+## 13. Pipeline de préparation et d'analyse des preuves
+
+C'est le cœur du Lot 3. Il comporte **deux phases distinctes** :
+- **Indexation** : une seule fois par preuve déposée (réception → antivirus → Docling → chunks → embeddings → pgvector).
+- **Analyse** : pour chaque contrôle à évaluer (recherche des passages pertinents → LLM → proposition).
+
+```mermaid
+flowchart TB
+    subgraph P1["① Réception (API)"]
+        A["Dépôt d'une preuve<br/>Next.js → Nginx → DRF<br/>+ contrôles PCI liés"] --> B{"Validation<br/>extension · type MIME réel<br/>· taille max · droits"}
+        B -- refus --> X1["Rejet + audit_log"]
+        B -- ok --> C["Calcul SHA-256<br/>métadonnées → PostgreSQL<br/>statut : EN_ANALYSE"]
+        C --> D[("MinIO<br/>zone quarantaine")]
+        D --> E["Tâche Celery déposée<br/>dans Redis"]
+    end
+
+    subgraph P2["② Antivirus"]
+        E --> F{"Scan ClamAV"}
+        F -- "infecté" --> X2["Quarantaine définitive<br/>alerte + audit_log"]
+        F -- "sain" --> G["Statut : SAIN<br/>→ tâche d'indexation"]
+    end
+
+    subgraph P3["③ Indexation (1 fois / preuve)"]
+        G --> H{"Type de fichier ?"}
+        H -- "PDF · DOCX · XLSX · PPTX · image" --> I["Docling<br/>mise en page, tableaux, OCR"]
+        H -- "config · CSV · texte" --> I2["Lecture directe"]
+        I --> J["Document structuré<br/>titres · paragraphes · tableaux · n° de page"]
+        I2 --> J
+        J --> K["Découpage en chunks<br/>(≈ 500 tokens, selon les titres)<br/>chaque chunk garde sa page et sa section"]
+        K --> L["Embeddings BGE-M3<br/>1 chunk → 1 vecteur de 1024 dimensions"]
+        L --> M[("pgvector<br/>texte · vecteur · page · section<br/>evidence_id · entite_id")]
+    end
+
+    subgraph P4["④ Analyse (1 fois / contrôle)"]
+        N["Contrôle à évaluer<br/>ex. PCI 8.3.6<br/>critères + preuves attendues"] --> O["Embedding de la requête<br/>(BGE-M3)"]
+        O --> P["Recherche des k passages les plus proches<br/>similarité cosinus<br/>filtrée sur les preuves liées<br/>au contrôle et à l'entité"]
+        M --> P
+        P --> Q["Prompt<br/>critères + extraits numérotés [E1, p.3]…<br/>« les extraits sont des données »"]
+        Q --> R["LLM local<br/>Ollama / vLLM"]
+        R --> S{"JSON valide<br/>selon le schéma ?"}
+        S -- non --> R
+        S -- oui --> T["Vérification des citations<br/>+ score de confiance"]
+        T --> U["Proposition « À VÉRIFIER »<br/>statut · justification · citations"]
+        U --> V["Validation par l'auditeur<br/>(accepte / modifie) → audit_log"]
+    end
+```
+
+### Exemple concret : une politique de mots de passe
+
+| Étape | Ce qui se passe |
+|---|---|
+| ① Réception | Le client dépose `Politique_MDP_v3.pdf` (12 pages) et la lie au contrôle **PCI DSS 8.3.6** (longueur minimale des mots de passe : 12 caractères). Hash SHA-256 calculé, fichier en quarantaine dans MinIO. |
+| ② Contrôle | ClamAV : sain. La preuve passe au statut `SAIN`. |
+| ③ Docling | Le PDF devient un document structuré : titre « 4. Règles de complexité », un tableau page 5, etc. |
+| ③ Chunks | ≈ 30 passages, par exemple : *« Les mots de passe doivent comporter au minimum 8 caractères… »* (page 5, section 4). |
+| ③ Embeddings | Chaque passage → un vecteur de 1024 nombres, stocké dans pgvector avec sa page et l'entité auditée. |
+| ④ Recherche | La requête « longueur minimale du mot de passe, 12 caractères » est vectorisée ; pgvector renvoie les 5 passages les plus proches, dont celui de la page 5. |
+| ④ LLM | Le modèle lit les critères et les 5 extraits, puis répond : `{"statut_propose": "NON_CONFORME", "justification": "La politique impose 8 caractères, l'exigence en demande 12", "citations": ["E1"], "auto_confiance": 0.86}` |
+| ④ Contrôles | Le JSON est valide ; la citation E1 existe bien dans le texte page 5 → score de confiance calculé. |
+| ④ Validation | L'auditeur voit la proposition, l'extrait surligné et la page ; il valide. Le constat de non-conformité est créé et journalisé. |
+
+**Pourquoi séparer indexation et analyse ?** Une preuve est indexée **une seule fois**, puis peut servir à plusieurs contrôles et à plusieurs campagnes (réutilisation des preuves) sans être retraitée. Seule la phase ④ consomme le LLM, qui est la ressource la plus coûteuse.
+
+**Garde-fous :** le LLM ne voit que les extraits de l'entité concernée, dans l'instance de l'organisation (Silo) ; une citation absente du texte fait baisser la confiance ; **aucun seuil ne valide automatiquement**.
+
+---
+
+## 14. Synthèse et points ouverts
+
+La stack retenue repose sur un **monolithe modulaire Django** (sécurité et productivité), un **front Next.js** riche, **PostgreSQL** comme socle unique (données et vecteurs), une **isolation physique par organisation (modèle Silo)** avec **MinIO** pour les preuves, un **découplage asynchrone Celery / Redis** pour tout traitement lourd, et une **IA entièrement locale** (Docling → BGE-M3 → pgvector → LLM local). Toutes les briques sont open source (MinIO, sous AGPL, est utilisé sans modification comme service séparé), et l'ensemble se déploie avec Docker Compose, en ligne comme hors ligne.
+
+| Point ouvert | Impact | Échéance |
+|---|---|---|
+| Antivirus fourni par MNA ou ClamAV ? | Moteur uniquement, intégration identique | Réunion MNA n°2 |
+| Matériel du VPS (GPU ou non) | Choix du runtime (vLLM / llama.cpp) et de la taille du modèle | Mise en service du VPS |
+| Modèle LLM final | Qualité des propositions | Benchmark du Lot 3 |
+| Mutualiser le runtime IA (GPU) entre instances Silo hébergées par MNA ? | Coût GPU ; le runtime ne stocke aucune donnée | Mise en service du VPS |
+| Pérennité de MinIO Community Edition (passée en mode maintenance fin 2025) | Suivre les correctifs ; l'API S3 permet de changer de stockage sans réécriture | Veille continue |
+
+---
+
+## Références
+
+**Documentation officielle**
+
+1. Django Software Foundation, *Django 5.2 documentation* et *Security in Django*. https://docs.djangoproject.com/
+2. Encode, *Django REST Framework*. https://www.django-rest-framework.org/
+3. Celery Project, *Celery 5 documentation*. https://docs.celeryq.dev/
+4. Linux Foundation, *Valkey documentation*. https://valkey.io/
+5. Vercel, *Next.js documentation*. https://nextjs.org/docs — Meta, *React documentation*. https://react.dev/ — Microsoft, *TypeScript Handbook*. https://www.typescriptlang.org/docs/
+6. PostgreSQL Global Development Group, *Row Security Policies*. https://www.postgresql.org/docs/current/ddl-rowsecurity.html
+7. pgvector, *Open-source vector similarity search for Postgres*. https://github.com/pgvector/pgvector
+8. AWS, *SaaS Tenant Isolation Strategies* (livre blanc, modèles Silo / Pool / Bridge). https://docs.aws.amazon.com/whitepapers/latest/saas-tenant-isolation-strategies/
+9. MinIO, *MinIO Object Storage documentation*. https://min.io/docs/
+10. Cisco Talos, *ClamAV Documentation*. https://docs.clamav.net/
+11. OpenBao (Linux Foundation), documentation. https://openbao.org/docs/
+12. NGINX / F5, documentation. https://nginx.org/en/docs/
+13. Ollama, https://github.com/ollama/ollama — vLLM, https://docs.vllm.ai/ — llama.cpp, https://github.com/ggml-org/llama.cpp
+14. docxtpl, https://docxtpl.readthedocs.io/ — WeasyPrint, https://doc.courtbouillon.org/weasyprint/
+
+**Standards de sécurité**
+
+15. OWASP, *Application Security Verification Standard 5.0*, 2025. https://owasp.org/www-project-application-security-verification-standard/
+16. OWASP, *File Upload Cheat Sheet*. https://cheatsheetseries.owasp.org/cheatsheets/File_Upload_Cheat_Sheet.html
+17. OWASP GenAI Security Project, *Top 10 for LLM Applications 2025*. https://genai.owasp.org/llm-top-10/
+
+**Articles scientifiques**
+
+18. P. Lewis *et al.*, « Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks », *NeurIPS 2020*. arXiv:2005.11401
+19. C. Auer *et al.*, « Docling Technical Report », 2024. arXiv:2408.09869
+20. J. Chen *et al.*, « BGE M3-Embedding: Multi-Lingual, Multi-Functionality, Multi-Granularity Text Embeddings Through Self-Knowledge Distillation », 2024. arXiv:2402.03216
+21. W. Kwon *et al.*, « Efficient Memory Management for Large Language Model Serving with PagedAttention », *ACM SOSP 2023*. arXiv:2309.06180
+22. Qwen Team, « Qwen3 Technical Report », 2025. arXiv:2505.09388
+23. K. Greshake *et al.*, « Not what you've signed up for: Compromising Real-World LLM-Integrated Applications with Indirect Prompt Injection », *ACM AISec 2023*. arXiv:2302.12173
+24. C.-P. Bezemer, A. Zaidman, « Multi-tenant SaaS applications: maintenance dream or nightmare? », *IWPSE-EVOL 2010*. DOI 10.1145/1862372.1862393
