@@ -23,7 +23,8 @@
 - [ ] **Assister à un audit** : quand, quel type d'audit, sous quelles conditions de confidentialité ? (D1)
 - [ ] **Référentiel GIE** : quand le recevra-t-on, sous quel format, et conditions de confidentialité (dépôt Git, mémoire, assistant IA) ?
 - [ ] Date de **fin de stage** exacte (début juin 2027 ?) et date de **soutenance** ?
-- [ ] Réception de l'**estimation du VPS** (envoyée avant le 16/11) : délai d'acquisition ? GPU possible ?
+- [ ] Réception de l'**estimation du VPS** (envoyée le 16/11 : 8–12 vCPU, 48–64 Go RAM, 512 Go SSD, GPU 24–32 Go) : niveau retenu (Minimum / Confortable) ? délai d'acquisition ? GPU possible ?
+- [ ] Peut-on obtenir un **échantillon anonymisé de preuves réelles** ? (estimer le stockage client, valider le benchmark IA sur des données réelles)
 
 ## 🟠 Toujours à poser (liste initiale, non encore traitée)
 - [ ] Existe-t-il chez MNA un **mapping PCI ↔ GIE** (même partiel) ou PCI ↔ ISO 27001 ?

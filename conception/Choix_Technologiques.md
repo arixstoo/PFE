@@ -117,12 +117,20 @@ Notes de 1 (mauvais) à 5 (excellent). Score = Σ (note × poids). **À ajuster 
 
 → Le code appelle une **API compatible OpenAI** en local : on change de runtime par configuration.
 
-### 9.2 Modèles candidats (à départager par **notre propre benchmark**, tâche du Lot 3)
-| Taille | Candidats | Licence | Remarque |
-|---|---|---|---|
-| 4–8 B | Qwen3-4B / 8B [A9], Llama 3.1 8B, Mistral 7B | Apache 2.0 / Llama | Faisable sur CPU (lent) |
-| 14 B | Qwen3-14B | Apache 2.0 | Bon compromis sur GPU 16 Go |
-| 24–32 B | Mistral Small 24B, Qwen3-32B, Qwen3-30B-A3B (MoE) | Apache 2.0 | Meilleure qualité en français, GPU 24 Go |
+### 9.2 Modèles candidats — premiers résultats du benchmark (Rahim, 16/11/2026)
+
+Un premier benchmark ([llm-benchmark](https://github.com/MedjberAbderrahim/llm-benchmark), 11 Mo de preuves synthétiques, 8 contrôles PCI DSS, exécution CPU) a comparé Qwen2.5 7B et 14B, avec et sans RAG. Détail dans [Estimation_Ressources_VPS.md](Estimation_Ressources_VPS.md) § 4. Ce qu'on en retient pour la stack :
+- **Le RAG est obligatoire** (pgvector + BGE-M3) : lire toutes les preuves (« contexte complet ») ne passe pas à l'échelle (le 14B n'a terminé que 1 cas sur 10) et donne de moins bonnes citations (78,9 % contre 100 % pour 14B + RAG).
+- **Le GPU est obligatoire** : en CPU seul, 14B + RAG prend 45 h pour 300 contrôles.
+- La classe **~14 B** sert de **base de travail** ; la classe **~27 B** est la cible si le serveur a 32 Go de VRAM.
+
+| Classe | Candidats | Licence | VRAM (contexte 16K) | Remarque |
+|---|---|---|---|---|
+| 7–8 B | Qwen2.5-7B (testé), Qwen3-8B [A9], Mistral 7B | Apache 2.0 | — | Trop juste en exactitude (60 % avec RAG) |
+| **~14 B** | **Qwen2.5-14B (testé)**, Qwen3-14B | Apache 2.0 | ~13,7 Go → **GPU 24 Go** | **Base de travail** (70 %, 100 % de citations valides avec RAG) |
+| **~27 B** | Gemma 2/3 27B, Qwen3-32B, Mistral Small 24B | Gemma : licence propre à Google ⚠️ ; Qwen / Mistral : Apache 2.0 | ~25,8 Go → **GPU 32 Go** | Cible « confortable » ; vérifier la licence Gemma pour un produit vendu (contrainte K6) |
+
+Contexte visé : **8K minimum, 16K confortable**.
 
 Sortie attendue : **statut (conforme / partiel / non conforme) + justification + citations + confiance**, en **JSON structuré** — **pas de chatbot** (réunion 05/11, D10).
 
@@ -162,7 +170,8 @@ ruff + mypy, pytest, ESLint + Vitest, Playwright (E2E), **Semgrep + Bandit** (SA
 | Secrets | OpenBao | | |
 | Antivirus | ClamAV (sous réserve MNA) | | |
 | IA runtime | Ollama (dev) / vLLM (prod GPU) / llama.cpp (CPU) | | |
-| Modèle LLM | Benchmark Qwen3-8B/14B vs Mistral Small 24B | | |
+| Modèle LLM | Classe ~14 B (Qwen2.5/Qwen3-14B) en base, ~27 B si GPU 32 Go — RAG obligatoire (benchmark du 16/11) | | |
+| Serveur | 8–12 vCPU, 48–64 Go RAM, 512 Go SSD, GPU 24–32 Go ([Estimation_Ressources_VPS.md](Estimation_Ressources_VPS.md)) | | |
 | Embeddings | BGE-M3 | | |
 | Extraction | Docling | | |
 | Rapports | WeasyPrint + docxtpl + openpyxl | | |

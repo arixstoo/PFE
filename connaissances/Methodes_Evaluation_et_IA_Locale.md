@@ -160,12 +160,18 @@ Exemple de calcul combiné (à justifier dans le mémoire) :
 - 30 % : auto-confiance du modèle (peu fiable seule, d'où la combinaison).
 Seuils : < 0,5 « faible » (affiché en rouge), etc. **Aucun seuil ne valide automatiquement.**
 
-### 2.5 Choix du modèle (à benchmarker sur VOTRE matériel)
+### 2.5 Choix du modèle (benchmark en cours sur notre matériel)
 | Matériel | Modèles réalistes (Ollama, quantifiés Q4) | Remarque |
 |---|---|---|
-| CPU seul, 16–32 Go RAM | 3–8 B (ex. Qwen3 4B/8B, Llama 3.x 8B, Mistral 7B) | Lent (quelques tokens/s) mais faisable en asynchrone |
-| GPU 12–16 Go VRAM | 8–14 B ; MoE type Qwen3-30B-A3B partiellement déchargé | Bon compromis |
-| GPU 24 Go VRAM | ~24–32 B (Mistral Small 24B, Qwen 27–32B) | Très bon en français et sur longs contextes |
+| CPU seul | 7–14 B | **Impraticable en production** : 14B + RAG = 45 h pour 300 contrôles (benchmark du 16/11) ; utile seulement en dev |
+| GPU 24 Go VRAM | ~14 B avec contexte 16K (~13,7 Go) | **Minimum retenu** pour le serveur |
+| GPU 32 Go VRAM | ~27 B avec contexte 16K (~25,8 Go) | **Confortable** : modèles plus fiables |
+
+**Premiers résultats** ([llm-benchmark](https://github.com/MedjberAbderrahim/llm-benchmark) de Rahim, 11 Mo de preuves synthétiques, 8 contrôles PCI DSS ; détail dans [Estimation_Ressources_VPS.md](../conception/Estimation_Ressources_VPS.md) § 4) :
+- **RAG obligatoire** : 14B + RAG = 70 % d'exactitude et 100 % de citations valides ; 14B en « contexte complet » ne termine que 1 cas sur 10 dans la limite de 900 s.
+- Le 7B est plus rapide mais moins juste (60 % avec RAG).
+- Aucune « erreur dangereuse » (faux « conforme ») dans les 4 runs.
+- À refaire sur GPU et sur des preuves réelles anonymisées quand elles seront disponibles.
 
 Pistes relevées : la famille **Qwen3** [A9] (0,6 B → 235 B, dense et MoE, Apache 2.0), **Mistral Small** pour le français (Apache 2.0). Runtime : Ollama pour le dev, **vLLM** [A8] dès qu'il y a des requêtes concurrentes (mode SaaS) — écart de débit important mesuré dans [G1]. Les classements en ligne divergent → **votre propre benchmark** sur votre jeu d'évaluation est la seule référence valable (et un excellent contenu de mémoire).
 

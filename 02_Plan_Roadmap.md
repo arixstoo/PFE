@@ -94,7 +94,7 @@ gantt
 
 | # | Tâche | Qui | Claude |
 |---|---|---|---|
-| U.1 | **Estimation des ressources du VPS** (CPU/GPU/RAM/stockage/réseau) et envoi à MNA | **Rahim** | 🤖 Brouillon complet fait : [Estimation_Ressources_VPS.md](conception/Estimation_Ressources_VPS.md) ; 🙋 relecture, envoi |
+| U.1 | **Estimation des ressources du VPS** (CPU/GPU/RAM/stockage/réseau) et envoi à MNA | **Rahim** | ✅ Version finale (16/11) avec benchmark LLM : [Estimation_Ressources_VPS.md](conception/Estimation_Ressources_VPS.md) + document Word aux couleurs de MNA dans `memoire/` ; 🙋 envoi |
 | U.2 | **Choix de la stack** (comparatif pondéré + décision + ADR) | **Rostom** | 🤖 Comparatif fait : [Choix_Technologiques.md](conception/Choix_Technologiques.md) ; 🙋 décision finale selon vos compétences |
 | U.3 | Envoyer le CR de la réunion du 05/11 | Rostom | 🤖 Fait : [CR_2026-11-05](organisation/Comptes_Rendus/CR_2026-11-05_Reunion_lancement.md) ; 🙋 envoi |
 | U.4 | Lundi 16/11 chez MNA : demander un créneau pour **assister à un audit** côté MNA | Rostom + Rahim | 🙋 |
@@ -175,7 +175,7 @@ gantt
 | 4.3 | CI : lint, tests, SAST, dépendances, Gitleaks | | A | 🤖 |
 | 4.4 | **Mise en service du VPS** (durcissement, Docker, TLS) | [Estimation_Ressources_VPS.md](conception/Estimation_Ressources_VPS.md) § 4 | A | 🤝 Scripts ; 🙋 accès au VPS |
 | 4.5 | Laboratoire virtuel (VMware) : Windows Server AD, Windows client, Ubuntu | Écarts volontaires pour la démo | A | 🤝 Guides ; 🙋 installation |
-| 4.6 | Installer le runtime LLM + benchmark rapide (tokens/s, RAM/VRAM) | Valide l'estimation du VPS | B | 🤝 Protocole ; 🙋 exécution |
+| 4.6 | Installer le runtime LLM + benchmark rapide (tokens/s, RAM/VRAM) | Valide l'estimation du VPS | B | 🟡 Premier benchmark CPU fait (Qwen2.5 7B/14B, RAG vs contexte complet : [llm-benchmark](https://github.com/MedjberAbderrahim/llm-benchmark)) ; reste à refaire sur le GPU du VPS |
 | 4.7 | « Hello world » authentifié déployé | | A+B | 🤖 |
 
 ---
@@ -344,7 +344,7 @@ gantt
 | Risque | Prob. | Impact | Mesure préventive | Plan B |
 |---|---|---|---|---|
 | Référentiel GIE en retard | Élevée | Élevé | Relancer chaque lundi | Référentiel fictif + import réel plus tard |
-| VPS / GPU non obtenu à temps | Moyenne | Moyen | Estimation envoyée avant le 16/11 | Petit modèle sur CPU ; poste GPU chez MNA |
+| VPS / GPU non obtenu à temps | Moyenne | **Élevé** (CPU seul = 45 h / 300 contrôles d'après le benchmark) | Estimation finale envoyée le 16/11 (GPU 24–32 Go) | Petit modèle sur CPU pour la démo uniquement ; poste GPU chez MNA |
 | Étude de l'existant qui déborde | Moyenne | Moyen | Livrables par semaine, revue à chaque réunion | Clore au 13/12 quoi qu'il arrive |
 | Mode SaaS sous-estimé (licences, isolation à 2 niveaux) | Moyenne | Élevé | Conçu dès le modèle de données | SaaS limité à : organisations isolées + modules activables (facturation hors périmètre) |
 | Lot 1 déborde | Élevée | Élevé | MoSCoW, démos toutes les 2 semaines | Couper les « Could » |

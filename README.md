@@ -33,7 +33,7 @@
 | 9b | [connaissances/Bibliographie.md](connaissances/Bibliographie.md) | Toutes les références vérifiées (articles, normes, docs officielles) | 30 min |
 | 10 | [conception/Architecture_Technique.md](conception/Architecture_Technique.md) | Composants, deux modes de déploiement (service / SaaS) | 1 h |
 | 10b | [conception/Choix_Technologiques.md](conception/Choix_Technologiques.md) | Comparatif pondéré des technologies + décision (Rostom) | 45 min |
-| 10c | [conception/Estimation_Ressources_VPS.md](conception/Estimation_Ressources_VPS.md) | Dimensionnement du serveur (CPU/GPU/RAM/stockage) (Rahim) | 20 min |
+| 10c | [conception/Estimation_Ressources_VPS.md](conception/Estimation_Ressources_VPS.md) | Dimensionnement du serveur (CPU/GPU/RAM/stockage) + benchmark LLM (Rahim) — version Word aux couleurs de MNA dans [memoire/](memoire/) | 20 min |
 | 11 | [conception/Modele_de_Donnees.md](conception/Modele_de_Donnees.md) | Entités, relations, versioning, multi-tenant | 1 h |
 | 12 | [conception/Securite_Plateforme.md](conception/Securite_Plateforme.md) | Sécurité by design de la plateforme elle-même + threat model | 1 h |
 | 13 | [conception/Backlog_User_Stories.md](conception/Backlog_User_Stories.md) | Backlog priorisé (MoSCoW) prêt pour les sprints | 45 min |

@@ -43,7 +43,7 @@
 
 | Action | Responsable | Échéance | Statut |
 |---|---|---|---|
-| Estimation des ressources du VPS (CPU/GPU/RAM/stockage/serveurs), envoi à MNA | Rahim | 16/11/2026 | 🟡 Brouillon prêt : [Estimation_Ressources_VPS.md](../../conception/Estimation_Ressources_VPS.md) |
+| Estimation des ressources du VPS (CPU/GPU/RAM/stockage/serveurs), envoi à MNA | Rahim | 16/11/2026 | ✅ Version finale : [Estimation_Ressources_VPS.md](../../conception/Estimation_Ressources_VPS.md) (8–12 vCPU, 48–64 Go RAM, 512 Go SSD, GPU 24–32 Go) |
 | Choix de la stack technique (comparatif + décision) | Rostom | 16/11/2026 | 🟡 Brouillon prêt : [Choix_Technologiques.md](../../conception/Choix_Technologiques.md) |
 | Démarrer l'étude de l'existant (outils, technologies, processus d'audit MNA) | Rostom + Rahim | 13/12/2026 au plus tard | ⬜ |
 | Demander un créneau pour **assister à un audit** côté MNA | Rostom + Rahim | Lundi 16/11/2026 | ⬜ |

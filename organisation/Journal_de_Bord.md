@@ -74,7 +74,7 @@
 
 **Objectifs de la semaine**
 - [ ] Envoyer le CR de la réunion du 05/11 (Rostom)
-- [ ] Finaliser et envoyer l'estimation du VPS (Rahim) — [Estimation_Ressources_VPS.md](../conception/Estimation_Ressources_VPS.md)
+- [x] Finaliser l'estimation du VPS (Rahim) — envoi à MNA à faire — [Estimation_Ressources_VPS.md](../conception/Estimation_Ressources_VPS.md)
 - [ ] Décider la stack et remplir le § 12 (Rostom) — [Choix_Technologiques.md](../conception/Choix_Technologiques.md)
 - [ ] Créer le groupe Zotero et y importer la [Bibliographie.md](../connaissances/Bibliographie.md)
 - [ ] Démarrer l'étude de l'existant : lecture PCI DSS v4.0.1 + *Summary of Changes 3.2.1 → 4.0*
@@ -82,10 +82,11 @@
 
 **Réalisé**
 - Rostom : …
-- Rahim : …
+- Rahim : estimation des ressources finalisée (document Word en anglais) + benchmark de LLM locaux ([llm-benchmark](https://github.com/MedjberAbderrahim/llm-benchmark)) : Qwen2.5 7B/14B, RAG vs contexte complet.
 
 **Décisions prises**
 - Mise à jour complète de la documentation suite à la réunion du 05/11 (avec Claude).
+- Serveur demandé : **8–12 vCPU, 48–64 Go RAM, 512 Go SSD, GPU 24–32 Go** (le GPU devient indispensable) ; **RAG obligatoire** ; modèle de la classe **~14 B** en base, **~27 B** si 32 Go de VRAM.
 
 **Prochaine semaine**
 - Lundi 16/11 chez MNA : demander un créneau d'observation d'audit, relancer le référentiel GIE.

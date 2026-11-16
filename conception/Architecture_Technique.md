@@ -153,7 +153,7 @@ flowchart TB
 
 ### 6.2 Environnements
 - **Dev** : `docker compose up` sur vos PC (profil sans GPU, petit modèle).
-- **Démo / pré-prod** : le **VPS** demandé à MNA (voir [Estimation_Ressources_VPS.md](Estimation_Ressources_VPS.md) : 8–16 vCPU, 32–64 Go RAM, idéalement 1 GPU 24 Go).
+- **Démo / pré-prod** : le **VPS** demandé à MNA (voir [Estimation_Ressources_VPS.md](Estimation_Ressources_VPS.md) : minimum 8 vCPU, 48 Go RAM, 512 Go SSD, GPU 24 Go ; confortable 12 vCPU, 64 Go RAM, 512 Go SSD, GPU 32 Go — le GPU est indispensable d'après le benchmark).
 - **Livrable « scripts de déploiement »** : `docker-compose.prod.yml`, `.env.example`, script d'initialisation (création de l'organisation et de l'admin, import des référentiels), sauvegarde/restauration (pg_dump + stockage objet + export référentiels), guide de durcissement.
 - **Réseaux Docker** : `frontend` (nginx ↔ api) et `backend` interne (`internal: true`) pour BDD, Redis, stockage, LLM → **le LLM n'a aucune route vers Internet** (preuve de l'exigence « IA locale »).
 
